@@ -200,42 +200,85 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }));
             }
+
+            // Popular Mural de Avisos (card lateral do dashboard)
+            const muralList = document.getElementById('dashboard-mural-notices');
+            if (muralList) {
+                muralList.innerHTML = notices.map(n => `
+                    <div class="notice-item" style="border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
+                        <div class="notice-date">${n.date}</div>
+                        <div class="notice-title">${n.title}</div>
+                        <div class="notice-desc">${n.content}</div>
+                    </div>
+                `).join('') || `<p style="color:var(--text-muted); font-size:0.85rem;">Nenhum aviso publicado ainda.</p>`;
+            }
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
         }
         refreshNotifications();
     }
 
-    async function triggerAddNotice() {
-        console.log("🔔 Iniciando criação de novo aviso...");
-        const title = prompt("Título do Aviso:");
-        if (!title) {
-            console.log("Criação de aviso cancelada (sem título).");
-            return;
-        }
-        const content = prompt("Corpo da mensagem do aviso:");
-        if (!content) {
-            console.log("Criação de aviso cancelada (sem conteúdo).");
-            return;
-        }
-        const isUrgent = confirm("Este é um aviso do tipo Urgência/Atenção? (Ex: Falta d'água)\n[OK] Sim (Atenção)\n[Cancelar] Não (Informativo)");
-        
+    // --- NOTICE MODAL LOGIC ---
+    const noticeModal = document.getElementById('add-notice-modal');
+
+    function openNoticeModal() {
+        console.log("🔔 Abrindo modal de novo aviso...");
+        // Limpar campos
+        document.getElementById('notice-title').value = '';
+        document.getElementById('notice-content').value = '';
+        document.querySelector('input[name="notice-type"][value="info"]').checked = true;
+        noticeModal.style.display = 'flex';
+        // Renderizar ícones do modal
+        lucide.createIcons();
+        // Focar no título
+        setTimeout(() => document.getElementById('notice-title').focus(), 100);
+    }
+
+    function closeNoticeModal() {
+        noticeModal.style.display = 'none';
+    }
+
+    // Cancelar
+    document.getElementById('cancel-notice')?.addEventListener('click', closeNoticeModal);
+
+    // Fechar clicando fora do modal
+    noticeModal?.addEventListener('click', (e) => {
+        if (e.target === noticeModal) closeNoticeModal();
+    });
+
+    // Salvar aviso
+    document.getElementById('save-notice')?.addEventListener('click', async () => {
+        const title = document.getElementById('notice-title').value.trim();
+        const content = document.getElementById('notice-content').value.trim();
+        const type = document.querySelector('input[name="notice-type"]:checked')?.value || 'info';
+
+        if (!title) return alert("Digite o título do aviso.");
+        if (!content) return alert("Digite a mensagem do aviso.");
+
+        const btn = document.getElementById('save-notice');
+        btn.textContent = "Publicando...";
+        btn.disabled = true;
+
         try {
-            await API.addNotice(title, content, isUrgent ? 'warning' : 'info');
+            await API.addNotice(title, content, type);
             console.log("✅ Aviso criado com sucesso.");
+            closeNoticeModal();
             loadDashboardStats();
         } catch (err) {
             console.error("Erro ao criar aviso:", err);
             alert("Erro ao salvar o aviso no banco de dados.");
         }
-    }
+
+        btn.textContent = "Publicar Aviso";
+        btn.disabled = false;
+    });
 
     console.log("Vinculando botões de aviso...");
     const btnNotice1 = document.getElementById('btn-add-notice');
     const btnNotice2 = document.getElementById('btn-add-notice-top');
 
-    if (btnNotice1) btnNotice1.addEventListener('click', triggerAddNotice);
-    if (btnNotice2) btnNotice2.addEventListener('click', triggerAddNotice);
+    if (btnNotice1) btnNotice1.addEventListener('click', openNoticeModal);
+    if (btnNotice2) btnNotice2.addEventListener('click', openNoticeModal);
 
     if (!btnNotice1 && !btnNotice2) {
         console.warn("⚠️ Aviso: Nenhum botão de aviso encontrado no DOM atual.");
