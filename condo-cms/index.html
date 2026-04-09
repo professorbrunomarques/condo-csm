@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sua Unidade - Painel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--bg-color), #0f172a);
+        }
+        .login-box {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--surface-border);
+            text-align: center;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0 20px;
+            border-radius: 8px;
+            border: 1px solid var(--surface-border);
+            background: rgba(255,255,255,0.05);
+            color: white;
+            box-sizing: border-box;
+        }
+        /* App View layout simplificado para celular */
+        .app-view {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            height: 100vh;
+            flex-direction: column;
+            background: var(--bg-color);
+            border-left: 1px solid var(--surface-border);
+            border-right: 1px solid var(--surface-border);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN DO MORADOR -->
+    <div id="login-screen" class="login-box">
+        <i data-lucide="building" style="width: 48px; height: 48px; color: var(--primary-light); margin-bottom: 1rem;"></i>
+        <h2 style="margin-bottom: 0.5rem; color: white;">Portal do Morador</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Acesso rápido da sua Unidade.</p>
+
+        <div style="text-align: left;">
+            <label style="font-size: 0.85rem; color: var(--text-muted);">Qual o seu Telefone cadastrado?</label>
+            <input type="text" id="login-phone" placeholder="Ex: (11) 98765-4321">
+            <p id="login-error" style="color: var(--danger); font-size: 0.8rem; margin-top: -10px; margin-bottom: 15px; display: none;">Cadastro não encontrado.</p>
+        </div>
+
+        <button id="btn-login" class="btn" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 1rem;">Entrar na Conta</button>
+        
+        <a href="painel.html" style="font-size: 0.75rem; color: var(--text-muted); text-decoration: none;">Acesso da Administração &rarr;</a>
+    </div>
+
+    <!-- PAINEL DO APP (Mobile-Like) -->
+    <div id="app-screen" class="app-view">
+        <div style="padding: 1.5rem; background: rgba(30,41,59,0.8); border-bottom: 1px solid var(--surface-border); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 id="morador-name" style="margin:0; font-size: 1.2rem; color: white;">Bem vindo</h2>
+                <span id="morador-unit" style="font-size: 0.85rem; color: var(--text-muted);">Unidade</span>
+            </div>
+            <button id="btn-logout" class="btn btn-outline" style="padding: 6px;"><i data-lucide="log-out" style="width:16px;"></i></button>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+            
+            <div class="section-card glass" style="margin: 0; padding: 1rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i data-lucide="bell" style="width:16px; vertical-align:text-bottom;"></i> Avisos Recentes</h3>
+                <div id="morador-notices" style="display:flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <!-- Avisos -->
+                </div>
+            </div>
+
+            <div class="section-card glass" style="margin: 0; padding: 1rem;">
+                <h3 style="margin-top: 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i data-lucide="tool" style="width:16px; vertical-align:text-bottom;"></i> Meus Chamados</h3>
+                <div id="morador-calls" style="display:flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <!-- Chamados -->
+                </div>
+                <button id="btn-open-call" class="btn btn-outline" style="width:100%; margin-top: 15px; justify-content:center;">Abrir Novo Chamado</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Scripts unificados -->
+    <script src="api.js"></script>
+    <script>
+        lucide.createIcons();
+        let loggedResident = null;
+
+        document.getElementById('btn-login').addEventListener('click', async () => {
+            const phone = document.getElementById('login-phone').value.trim();
+            if(!phone) return;
+            
+            const btn = document.getElementById('btn-login');
+            btn.textContent = "Validando...";
+            
+            // Busca morador por telefone (Como se fosse login)
+            const residents = await window.BackendAPI.getResidents();
+            const resident = residents.find(r => r.phone === phone);
+            
+            if(resident) {
+                loggedResident = resident;
+                document.getElementById('login-error').style.display = 'none';
+                document.getElementById('login-screen').style.display = 'none';
+                
+                document.getElementById('app-screen').style.display = 'flex';
+                document.body.style.alignItems = 'flex-start';
+                
+                loadApp();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+                btn.textContent = "Entrar na Conta";
+            }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            window.location.reload();
+        });
+
+        async function loadApp() {
+            document.getElementById('morador-name').textContent = `Olá, ${loggedResident.name.split(' ')[0]}`;
+            document.getElementById('morador-unit').textContent = loggedResident.unitDisplay;
+            
+            const notices = await window.BackendAPI.getNotices();
+            document.getElementById('morador-notices').innerHTML = notices.map(n => `
+                <div style="border-left: 2px solid var(--${n.type === 'warning' ? 'warning' : 'info'}); padding-left: 10px;">
+                    <b style="font-size:0.9rem; color:var(--text-main);">${n.title}</b>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${n.content}</div>
+                </div>
+            `).join('') || `<span style="font-size:0.8rem; color:var(--text-muted);">Nenhum recado do síndico.</span>`;
+
+            loadCalls();
+        }
+
+        async function loadCalls() {
+            const maint = await window.BackendAPI.getMaintenance();
+            const myCalls = maint.filter(m => m.location.includes(loggedResident.unitDisplay) || m.location === String(loggedResident.id));
+            
+            document.getElementById('morador-calls').innerHTML = myCalls.map(c => `
+                <div style="display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--surface-border); padding: 8px; border-radius: 6px;">
+                    <span style="font-size:0.85rem;">${c.title}</span>
+                    <span style="font-size:0.7rem; padding: 2px 6px; border-radius:4px; font-weight:bold; 
+                        ${c.status==='done'?'background:rgba(34,197,94,0.2); color:var(--success)':
+                        c.status==='progress'?'background:rgba(245,158,11,0.2); color:var(--warning)':
+                        'background:transparent; border:1px solid #555;'};">
+                        ${c.status.toUpperCase()}
+                    </span>
+                </div>
+            `).join('') || `<span style="font-size:0.8rem; color:var(--text-muted);">Você não tem chamados abertos.</span>`;
+        }
+
+        document.getElementById('btn-open-call').addEventListener('click', async () => {
+            const issue = prompt("Descreva qual o problema para a manutenção:");
+            if(issue) {
+                await window.BackendAPI.addMaintenance(issue, loggedResident.unitDisplay);
+                alert("Chamado aberto para o síndico!");
+                loadCalls();
+            }
+        });
+    </script>
+</body>
+</html>

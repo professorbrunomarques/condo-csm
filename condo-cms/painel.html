@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CondoManager | CMS Premium</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="auth-locked">
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="modal-overlay auth-overlay">
+        <div class="modal-content glass login-card">
+            <div class="logo-icon" style="margin: 0 auto 1.5rem;">C</div>
+            <h2 style="margin-bottom: 0.5rem;">Bem-vindo</h2>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem;">Acesse o painel administrativo
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+                <div class="form-group">
+                    <label>Usuário</label>
+                    <input type="text" id="login-user">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="login-pass">
+                </div>
+                <button id="btn-login-submit" class="btn btn-login">Entrar no Sistema</button>
+                <p id="login-error" style="color: var(--danger); font-size: 0.8rem; text-align: center; display: none;">
+                    Credenciais inválidas. Tente novamente.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar glass">
+        <div class="logo-container">
+            <div class="logo-icon">C</div>
+            <div class="logo-wrapper">
+                <div class="logo-text">CondoManager</div>
+                <div id="sidebar-condo-name" style="font-size: 0.65rem; color: var(--text-muted); font-weight: 500;">
+                    Carregando...</div>
+            </div>
+        </div>
+
+        <ul class="nav-links">
+            <li><a href="#" class="nav-item active" data-target="dashboard">
+                    <i data-lucide="layout-dashboard"></i> Dashboard
+                </a></li>
+            <li><a href="#" class="nav-item" data-target="org">
+                    <i data-lucide="building"></i> Condomínio
+                </a></li>
+            <li><a href="#" class="nav-item" data-target="residents">
+                    <i data-lucide="users"></i> Moradores
+                </a></li>
+            <li><a href="#" class="nav-item" data-target="maintenance">
+                    <i data-lucide="wrench"></i> Manutenções
+                </a></li>
+            <li><a href="#" class="nav-item" data-target="settings">
+                    <i data-lucide="settings"></i> Configurações
+                </a></li>
+            <li><a href="#" class="nav-item" data-target="users">
+                    <i data-lucide="shield-plus"></i> Usuários
+                </a></li>
+            <li style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <a href="#" class="nav-item" data-target="portal" style="color: var(--primary-light);">
+                    <i data-lucide="user-circle"></i> Portal do Morador
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-wrapper">
+        <!-- Header -->
+        <header class="header glass">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button id="menu-toggle" class="btn-icon" style="display: none;"><i data-lucide="menu"></i></button>
+                <div class="search-bar">
+                    <i data-lucide="search" style="color: var(--text-muted); width: 18px;"></i>
+                    <input type="text" id="global-search-input" placeholder="Buscar moradores, unidades...">
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="notifications-wrapper">
+                    <div class="notifications glass" id="btn-notifications">
+                        <i data-lucide="bell" style="width: 20px;"></i>
+                        <span class="badge" id="notifications-badge" style="display: none;"></span>
+                    </div>
+                    <!-- Notification Dropdown -->
+                    <div class="dropdown-menu notifications-dropdown glass" id="notifications-dropdown">
+                        <div class="dropdown-header">
+                            <span>Notificações</span>
+                            <span class="mark-read" id="btn-mark-all-read"
+                                style="cursor: pointer; color: var(--primary); font-size: 0.75rem;">Marcar como
+                                lidas</span>
+                        </div>
+                        <div class="dropdown-body" id="notifications-list">
+                            <!-- Dinâmico -->
+                            <div style="padding:20px; text-align:center; color:var(--text-muted); font-size:0.8rem;">
+                                Carregando notificações...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-wrapper">
+                    <div class="user-profile" id="btn-profile">
+                        <span class="admin-name">Admin</span>
+                        <img src="https://i.pravatar.cc/150?u=admin" alt="Admin" class="avatar user-avatar-img">
+                    </div>
+                    <!-- Profile Dropdown -->
+                    <div class="dropdown-menu profile-dropdown glass" id="profile-dropdown">
+                        <ul class="profile-links">
+                            <li><a href="#" class="profile-link" data-target="profile"><i data-lucide="user"></i>
+                                    Perfil</a></li>
+                            <li><a href="#" class="profile-link" data-target="settings"><i data-lucide="settings"></i>
+                                    Configurações</a></li>
+                            <li class="divider"></li>
+                            <li><a href="index.html" class="profile-link logout"><i data-lucide="log-out"></i> Sair do
+                                    Painel</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <div class="content">
+
+            <!-- DASHBOARD VIEW -->
+            <div id="dashboard" class="page-view active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h1 class="page-title" style="margin-bottom: 0.5rem;">Visão Geral</h1>
+                        <p style="color: var(--text-muted)">Bem-vindo de volta, Admin. Aqui está o resumo de hoje.</p>
+                    </div>
+                    <button class="btn" id="btn-add-notice-top"><i data-lucide="plus" style="width: 18px;"></i> Novo
+                        Aviso</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card glass purple">
+                        <div class="stat-header">
+                            <span class="stat-label">Total de Unidades</span>
+                            <div class="stat-icon"><i data-lucide="home"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-units">...</div>
+                        <span style="font-size: 0.8rem; color: var(--success);"><i data-lucide="arrow-up"
+                                style="width: 12px;"></i> <span id="stat-occupancy">...</span> Ocupadas</span>
+                    </div>
+
+                    <div class="stat-card glass cyan">
+                        <div class="stat-header">
+                            <span class="stat-label">Moradores Ativos</span>
+                            <div class="stat-icon"><i data-lucide="users"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-residents">...</div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">+ novos este mês</span>
+                    </div>
+
+                    <div class="stat-card glass orange">
+                        <div class="stat-header">
+                            <span class="stat-label">Chamados Abertos</span>
+                            <div class="stat-icon"><i data-lucide="alert-circle"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-opencalls">...</div>
+                        <span style="font-size: 0.8rem; color: var(--warning);">Precisam de atenção urgente</span>
+                    </div>
+
+                    <div class="stat-card glass green">
+                        <div class="stat-header">
+                            <span class="stat-label">Comunicados</span>
+                            <div class="stat-icon"><i data-lucide="megaphone"></i></div>
+                        </div>
+                        <div class="stat-value" id="stat-notices-count">...</div>
+                        <span style="font-size: 0.8rem; color: var(--success);">Informativos ativos</span>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section-card glass">
+                        <div class="section-header">
+                            <h2 class="section-title">Acesso Rápido</h2>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <button class="btn btn-outline"
+                                onclick="document.querySelector('[data-target=residents]').click()"
+                                style="flex-direction: column; padding: 20px; height: auto;"><i data-lucide="users"
+                                    style="width:24px; margin-bottom:8px;"></i> Ver Moradores</button>
+                            <button class="btn btn-outline"
+                                onclick="document.querySelector('[data-target=maintenance]').click()"
+                                style="flex-direction: column; padding: 20px; height: auto;"><i data-lucide="wrench"
+                                    style="width:24px; margin-bottom:8px;"></i> Ver Chamados</button>
+                        </div>
+                    </div>
+
+                    <div class="section-card glass">
+                        <div class="section-header">
+                            <h2 class="section-title">Mural de Avisos</h2>
+                        </div>
+                        <div class="notice-list">
+                            <div class="notice-item">
+                                <div class="notice-date">10 Abril 2026</div>
+                                <div class="notice-title">Manutenção do Elevador B</div>
+                                <div class="notice-desc">Elevador social ficará inoperante das 10h as 14h.</div>
+                            </div>
+                            <div class="notice-item">
+                                <div class="notice-date">05 Abril 2026</div>
+                                <div class="notice-title">Assembleia Geral</div>
+                                <div class="notice-desc">Aprovado orçamento para pintura da fachada oeste.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div> <!-- Fechamento da section original -->
+                <div class="dashboard-sections" style="margin-top: 2rem;">
+                    <!-- Admin: Notice Board -->
+                    <div class="section-card glass" style="flex: 2;">
+                        <div class="section-header">
+                            <h2 class="section-title">Central de Avisos</h2>
+                            <button class="btn btn-outline" id="btn-add-notice"
+                                style="padding: 6px 12px; font-size: 0.85rem;"><i data-lucide="plus"
+                                    style="width:14px;"></i> Publicar Aviso</button>
+                        </div>
+                        <div id="admin-notices-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- Avisos dinâmicos -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORG VIEW -->
+            <div id="org" class="page-view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h1 class="page-title" style="margin-bottom: 0.5rem;">Gestão de Condomínio</h1>
+                        <p style="color: var(--text-muted)">Controle blocos, torres e unidades do seu ecossistema.</p>
+                    </div>
+                </div>
+
+                <div class="dashboard-sections">
+                    <div class="section-card glass">
+                        <div class="section-header">
+                            <h2 class="section-title">Blocos e Torres</h2>
+                            <button class="btn btn-outline" id="btn-add-block"
+                                style="padding: 6px 12px; font-size: 0.85rem;"><i data-lucide="plus"
+                                    style="width:14px;"></i> Bloco</button>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome do Bloco</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="blocks-tbody">
+                                <!-- Dinamico -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="section-card glass" style="display: flex; flex-direction: column;">
+                        <div class="section-header" style="justify-content: space-between; align-items: center;">
+                            <h2 class="section-title" style="margin-bottom:0;">Unidades (Apartamentos)</h2>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="unit-search-input" placeholder="Filtrar Bloco ou Nº..."
+                                    style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.05); color: white; width: 200px; font-size:0.85rem;">
+                                <button class="btn btn-outline" id="btn-add-unit"
+                                    style="padding: 6px 12px; font-size: 0.85rem;"><i data-lucide="plus"
+                                        style="width:14px;"></i> Unidade</button>
+                            </div>
+                        </div>
+                        <div style="max-height: 400px; overflow-y: auto; border-radius: 8px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th
+                                            style="position: sticky; top: 0; background: var(--surface-color); z-index: 1;">
+                                            Bloco</th>
+                                        <th
+                                            style="position: sticky; top: 0; background: var(--surface-color); z-index: 1;">
+                                            Nº Unidade</th>
+                                        <th
+                                            style="position: sticky; top: 0; background: var(--surface-color); z-index: 1;">
+                                            Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="units-tbody">
+                                    <!-- Dinamico -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RESIDENTS VIEW -->
+            <div id="residents" class="page-view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h1 class="page-title" style="margin-bottom: 0.5rem;">Gestão de Moradores</h1>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-outline" id="btn-export-residents" style="padding: 8px 16px;"><i
+                                data-lucide="download" style="width: 18px;"></i> CSV</button>
+                        <button class="btn" id="btn-open-add-resident"><i data-lucide="user-plus"
+                                style="width: 18px;"></i> Adicionar Morador</button>
+                    </div>
+                </div>
+
+                <div class="section-card glass">
+                    <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
+                        <input type="text" id="resident-search-input" placeholder="Filtrar por nome ou unidade..."
+                            style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.05); color: white; width: 300px;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Unidade</th>
+                                <th>Contato</th>
+                                <th>Veículos</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="residents-tbody">
+                            <!-- Inserido dinamicamente via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MAINTENANCE VIEW -->
+            <div id="maintenance" class="page-view">
+                <h1 class="page-title"><i data-lucide="wrench"
+                        style="vertical-align: middle; margin-right: 10px; color: var(--primary-light);"></i>
+                    Solicitações de Manutenção</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Controle e acompanhe os chamados registrados
+                    pelos condôminos.</p>
+
+                <div class="dashboard-sections" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <!-- Coluna Abertos -->
+                    <div class="section-card glass" style="border-top: 4px solid var(--danger);">
+                        <h3
+                            style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                            Abertos <span class="badge" id="badge-open"
+                                style="position: static; width: auto; height: auto; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem;">0</span>
+                        </h3>
+                        <div class="notice-list" id="maint-open">
+                            <!-- Dinamico -->
+                        </div>
+                    </div>
+
+                    <!-- Coluna Em Andamento -->
+                    <div class="section-card glass" style="border-top: 4px solid var(--warning);">
+                        <h3
+                            style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                            Em Andamento <span class="badge" id="badge-progress"
+                                style="position: static; width: auto; height: auto; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; background: var(--warning);">0</span>
+                        </h3>
+                        <div class="notice-list" id="maint-progress">
+                            <!-- Dinamico -->
+                        </div>
+                    </div>
+
+                    <!-- Coluna Concluídos -->
+                    <div class="section-card glass" style="border-top: 4px solid var(--success);">
+                        <h3
+                            style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                            Concluídos <span class="badge" id="badge-done"
+                                style="position: static; width: auto; height: auto; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; background: var(--success);">0</span>
+                        </h3>
+                        <div class="notice-list" id="maint-done" style="opacity: 0.6;">
+                            <!-- Dinamico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- PROFILE VIEW -->
+            <div id="profile" class="page-view">
+                <h1 class="page-title"><i data-lucide="user"
+                        style="vertical-align: middle; margin-right: 10px; color: var(--primary-light);"></i> Meu Perfil
+                </h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Gerencie suas informações pessoais e
+                    credenciais de acesso.</p>
+
+                <div class="dashboard-sections" style="grid-template-columns: 1fr 1fr;">
+                    <div class="section-card glass">
+                        <div style="display:flex; align-items:center; gap:1.5rem; margin-bottom:2rem;">
+                            <img src="https://i.pravatar.cc/150?u=admin" class="avatar user-avatar-img"
+                                style="width:80px; height:80px; border-width:3px;">
+                            <div>
+                                <h2 class="section-title" style="margin-bottom:0.5rem;">Informações Gerais</h2>
+                                <button class="btn btn-outline" id="btn-change-photo"
+                                    style="font-size:0.75rem; padding:5px 10px;">Alterar Foto</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Nome
+                                    Completo</label>
+                                <input type="text" id="profile-name" value="" readonly>
+                            </div>
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Usuário
+                                    de Acesso</label>
+                                <input type="text" id="profile-username" value="" readonly>
+                            </div>
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Cargo
+                                    / Função</label>
+                                <span id="profile-role" class="badge"
+                                    style="background:var(--primary); color:white; font-weight:700; padding:4px 12px; border-radius:30px; position:static; width:auto; height:auto; box-shadow:0 0 15px rgba(139,92,246,0.3);">Carregando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card glass">
+                        <h2 class="section-title">Segurança</h2>
+                        <div style="display:flex; flex-direction:column; gap:1.5rem; margin-top:1.5rem;">
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Senha
+                                    Atual</label>
+                                <input type="password" value="********" readonly>
+                            </div>
+                            <button class="btn btn-outline" style="width:fit-content;">Alterar Senha</button>
+                            <p style="font-size:0.75rem; color:var(--text-muted);">Recomendamos trocar sua senha a cada
+                                90 dias para manter a segurança do condomínio.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="settings" class="page-view">
+                <h1 class="page-title">Configurações do Sistema</h1>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Ajuste as preferências do sistema e gerencie
+                    os dados globais.</p>
+
+                <div class="dashboard-sections" style="grid-template-columns: 1.5fr 1fr;">
+                    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                        <div class="section-card glass">
+                            <h2 class="section-title">Dados do Condomínio</h2>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+                                <div style="grid-column: span 2;">
+                                    <label
+                                        style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Nome
+                                        do Edifício / Residencial</label>
+                                    <input type="text" id="settings-condo-name" value="Residencial Torre Central">
+                                </div>
+                                <div>
+                                    <label
+                                        style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">CNPJ</label>
+                                    <input type="text" id="settings-condo-cnpj" value="12.345.678/0001-99">
+                                </div>
+                                <div>
+                                    <label
+                                        style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Cidade
+                                        / UF</label>
+                                    <input type="text" id="settings-condo-city" value="São Paulo / SP">
+                                </div>
+                            </div>
+                            <button class="btn" id="btn-save-settings" style="margin-top:1.5rem;">Salvar
+                                Alterações</button>
+                        </div>
+
+                        <div class="section-card glass"
+                            style="border: 1px solid rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);">
+                            <h2 class="section-title" style="color: var(--danger);"><i data-lucide="alert-triangle"
+                                    style="vertical-align: middle; width:20px;"></i> Zona de Perigo</h2>
+                            <p
+                                style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem; margin-top:0.5rem;">
+                                Ações irreversíveis que impactam todos os dados do sistema.</p>
+
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(239,68,68,0.2); pt: 1rem; margin-top:1rem; padding-top:1rem;">
+                                <div>
+                                    <h4 style="margin-bottom: 4px; color: var(--text-main);">Limpar Banco de Dados</h4>
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">Isso vai redefinir o
+                                        sistema para o modo de demonstração.</span>
+                                </div>
+                                <button class="btn" id="btn-reset-db" style="background: var(--danger);"><i
+                                        data-lucide="trash" style="width:16px;"></i> Apagar Tudo</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-card glass">
+                        <h2 class="section-title">Preferências</h2>
+                        <div style="display:flex; flex-direction:column; gap:1.5rem; margin-top:1.5rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <span style="display:block; font-size:0.9rem;">Notificações por E-mail</span>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Avisos de novos
+                                        chamados</span>
+                                </div>
+                                <input type="checkbox" checked style="width:auto;">
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <span style="display:block; font-size:0.9rem;">Sons do Sistema</span>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Alertas sonoros no
+                                        painel</span>
+                                </div>
+                                <input type="checkbox" checked style="width:auto;">
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <span style="display:block; font-size:0.9rem;">Relatórios Semanais</span>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">Envio automático de
+                                        PDFs</span>
+                                </div>
+                                <input type="checkbox" style="width:auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="users" class="page-view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h1 class="page-title">Gestão de Acesso</h1>
+                        <p style="color: var(--text-muted)">Cadastre administradores e funcionários com controle de
+                            cargo.</p>
+                    </div>
+                    <button class="btn" id="btn-open-add-user"><i data-lucide="user-plus" style="width: 18px;"></i> Novo
+                        Usuário</button>
+                </div>
+
+                <div class="section-card glass">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Login</th>
+                                <th>Cargo</th>
+                                <th>Criado em</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <!-- Inserido dinamicamente via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PORTAL DO MORADOR VIEW -->
+            <div id="portal" class="page-view">
+                <div
+                    style="margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px inset rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1 class="page-title" style="color: var(--primary-light);">Painel de Acesso Rápido</h1>
+                        <p style="color: var(--text-muted);">Área restrita de auto-atendimento para o condômino.</p>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
+                        <label style="font-size: 12px; color: var(--text-muted);">Simulador de Login:</label>
+                        <select id="sim-resident-select"
+                            style="padding: 8px; border-radius: 6px; border: 1px solid var(--primary-color); background: rgba(0,0,0,0.3); color: white;">
+                            <option value="">Entrar como morador...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="portal-content" style="display: none;">
+                    <div style="display: flex; gap: 2rem;">
+                        <!-- Coluna Maior (Avisos e Dados) -->
+                        <div style="flex: 2; display: flex; flex-direction: column; gap: 2rem;">
+                            <div class="section-card glass"
+                                style="background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);">
+                                <h2 id="portal-welcome" style="margin-bottom: 5px;">Bem vindo(a)!</h2>
+                                <p id="portal-unit" style="color: var(--text-muted); font-size: 0.9rem;">Unidade</p>
+                            </div>
+
+                            <div class="section-card glass">
+                                <h2 class="section-title"><i data-lucide="bell" style="width:18px;"></i> Quadro de
+                                    Avisos</h2>
+                                <div id="portal-notices">
+                                    <!-- Avisos do portal -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coluna Menor (Serviços) -->
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 2rem;">
+                            <!-- Meus Chamados -->
+                            <div class="section-card glass">
+                                <h2 class="section-title"><i data-lucide="wrench" style="width:18px;"></i> Meus Chamados
+                                </h2>
+                                <button id="btn-portal-open-call" class="btn btn-outline"
+                                    style="width: 100%; border-radius: 8px; font-size:0.8rem; margin-bottom: 1rem;">Abrir
+                                    Chamado</button>
+                                <div id="portal-my-calls" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <!-- Chamados dinâmicos -->
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                </div>
+
+                <div id="portal-locked" style="text-align: center; padding: 4rem; opacity: 0.5;">
+                    <i data-lucide="lock" style="width: 48px; height: 48px; margin-bottom: 1rem;"></i>
+                    <p>Selecione um perfil no simulador de Login acima para desbloquear o Portal.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal Adicionar Morador -->
+    <div id="add-resident-modal" class="modal-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="modal-content glass"
+            style="width: 400px; padding: 2rem; border-radius: 16px; display: flex; flex-direction: column; gap: 1rem;">
+            <h2 style="margin-bottom: 0.5rem;">Adicionar Morador</h2>
+            <input type="text" id="res-name" placeholder="Nome Completo">
+
+            <select id="res-unit-id">
+                <option value="">Selecione a Unidade associada...</option>
+            </select>
+
+            <input type="text" id="res-phone" placeholder="Contato">
+            <input type="text" id="res-vehicles" placeholder="Veículos (qtd ou placas)">
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button id="cancel-resident" class="btn btn-outline" style="flex: 1;">Cancelar</button>
+                <button id="save-resident" class="btn" style="flex: 1; justify-content: center;">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
