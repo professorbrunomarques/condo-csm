@@ -60,6 +60,9 @@
             <li><a href="#" class="nav-item" data-target="maintenance">
                     <i data-lucide="wrench"></i> Manutenções
                 </a></li>
+            <li><a href="#" class="nav-item" data-target="packages">
+                    <i data-lucide="package"></i> Encomendas
+                </a></li>
             <li><a href="#" class="nav-item" data-target="settings">
                     <i data-lucide="settings"></i> Configurações
                 </a></li>
@@ -192,6 +195,10 @@
                                 onclick="document.querySelector('[data-target=residents]').click()"
                                 style="flex-direction: column; padding: 20px; height: auto;"><i data-lucide="users"
                                     style="width:24px; margin-bottom:8px;"></i> Ver Moradores</button>
+                            <button class="btn btn-outline"
+                                onclick="document.querySelector('[data-target=packages]').click()"
+                                style="flex-direction: column; padding: 20px; height: auto;"><i data-lucide="package"
+                                    style="width:24px; margin-bottom:8px;"></i> Ver Encomendas</button>
                             <button class="btn btn-outline"
                                 onclick="document.querySelector('[data-target=maintenance]').click()"
                                 style="flex-direction: column; padding: 20px; height: auto;"><i data-lucide="wrench"
@@ -379,7 +386,79 @@
                 </div>
             </div>
 
+            <!-- PACKAGES VIEW -->
+            <div id="packages" class="page-view">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
+                    <div>
+                        <h1 class="page-title"><i data-lucide="package" style="vertical-align: middle; margin-right: 10px; color: var(--primary-light);"></i>Gestao de Encomendas</h1>
+                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Receba, notifique e entregue encomendas com rastreio visual para cada morador.</p>
+                    </div>
+                    <div class="badge" id="packages-summary-badge" style="position: static; width: auto; height: auto; border-radius: 999px; padding: 8px 14px; background: rgba(245, 158, 11, 0.18); color: var(--warning);">0 aguardando retirada</div>
+                </div>
 
+                <div class="dashboard-sections" style="grid-template-columns: 1.15fr 1fr;">
+                    <div class="section-card glass">
+                        <div class="section-header">
+                            <h2 class="section-title">Registrar Nova Encomenda</h2>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="grid-column: span 2;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Morador</label>
+                                <select id="package-resident-id">
+                                    <option value="">Selecione o morador...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Transportadora / origem</label>
+                                <input type="text" id="package-carrier" placeholder="Ex: Correios, Mercado Livre">
+                            </div>
+                            <div>
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Codigo / referencia</label>
+                                <input type="text" id="package-code" placeholder="Opcional">
+                            </div>
+                            <div style="grid-column: span 2;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Observacoes</label>
+                                <textarea id="package-notes" rows="3" placeholder="Descreva o pacote, tamanho, condicao ou recados..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--surface-border); background:rgba(255,255,255,0.05); color:white; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+                            </div>
+                            <div style="grid-column: span 2;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Foto da encomenda</label>
+                                <input type="file" id="package-photo" accept="image/*" capture="environment">
+                                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">A foto fica visivel para o morador no portal.</p>
+                            </div>
+                            <div id="package-photo-preview-wrap" style="grid-column: span 2; display:none;">
+                                <img id="package-photo-preview" alt="Pre-visualizacao da encomenda" style="width:100%; max-height:240px; object-fit:cover; border-radius:14px; border:1px solid var(--surface-border);">
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:10px; margin-top:1.5rem; flex-wrap:wrap;">
+                            <button class="btn" id="btn-save-package"><i data-lucide="plus" style="width:18px;"></i> Registrar Encomenda</button>
+                            <button class="btn btn-outline" id="btn-clear-package-form">Limpar</button>
+                        </div>
+                        <p id="package-form-feedback" style="display:none; margin-top:10px; font-size:0.8rem;"></p>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:1.5rem;">
+                        <div class="section-card glass">
+                            <div class="section-header">
+                                <h2 class="section-title">Aguardando Retirada</h2>
+                                <span class="badge" id="packages-pending-count" style="position: static; width: auto; height: auto; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; background: var(--warning);">0</span>
+                            </div>
+                            <div id="packages-pending-list" class="notice-list">
+                                <!-- Dinamico -->
+                            </div>
+                        </div>
+
+                        <div class="section-card glass">
+                            <div class="section-header">
+                                <h2 class="section-title">Historico de Entregas</h2>
+                                <span class="badge" id="packages-delivered-count" style="position: static; width: auto; height: auto; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; background: var(--success);">0</span>
+                            </div>
+                            <div id="packages-delivered-list" class="notice-list" style="opacity:0.82;">
+                                <!-- Dinamico -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- PROFILE VIEW -->
             <div id="profile" class="page-view">
@@ -621,6 +700,13 @@
                                 </div>
                             </div>
 
+                            <div class="section-card glass">
+                                <h2 class="section-title"><i data-lucide="package" style="width:18px;"></i> Minhas Encomendas
+                                </h2>
+                                <div id="portal-my-packages" style="display: flex; flex-direction: column; gap: 10px;">
+                                    <!-- Encomendas dinamicas -->
+                                </div>
+                            </div>
 
                         </div>
                     </div>

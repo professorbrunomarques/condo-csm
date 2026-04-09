@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if(targetId === 'residents') loadResidents();
                     if(targetId === 'dashboard') loadDashboardStats();
                     if(targetId === 'maintenance') loadMaintenance();
+                    if(targetId === 'packages') loadPackages();
                     if(targetId === 'org') loadOrg();
                     if(targetId === 'portal') loadPortalSim();
                     if(targetId === 'users') loadUsers();
@@ -165,6 +166,87 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- API INTEGRATION LOGIC ---
     let currentResidents = []; // Cache for filtering & exporting
     let currentUnits = []; // Cache for unit filtering
+    let currentParcels = [];
+    let packagePhotoDataUrl = '';
+
+    function formatPhoneForWhatsApp(phone = '') {
+        return String(phone).replace(/\D/g, '');
+    }
+
+    function buildParcelWhatsAppMessage(parcel) {
+        const parts = [
+            `Olá, ${parcel.residentName.split(' ')[0]}!`,
+            `Sua encomenda chegou na administração do condomínio.`,
+            `Unidade: ${parcel.unitDisplay}`,
+            `Recebimento: ${parcel.receivedAtLabel}`
+        ];
+
+        if (parcel.carrier) parts.push(`Origem/transportadora: ${parcel.carrier}`);
+        if (parcel.trackingCode) parts.push(`Referência: ${parcel.trackingCode}`);
+        if (parcel.notes) parts.push(`Observações: ${parcel.notes}`);
+
+        parts.push('Quando puder, passe na administração para retirar.');
+        return parts.join('\n');
+    }
+
+    function setPackageFeedback(message, type = 'info') {
+        const feedback = document.getElementById('package-form-feedback');
+        if (!feedback) return;
+
+        feedback.style.display = 'block';
+        feedback.style.color = type === 'error' ? 'var(--danger)' : (type === 'success' ? 'var(--success)' : 'var(--text-muted)');
+        feedback.textContent = message;
+    }
+
+    function resetPackageForm() {
+        const residentSelect = document.getElementById('package-resident-id');
+        const carrierInput = document.getElementById('package-carrier');
+        const codeInput = document.getElementById('package-code');
+        const notesInput = document.getElementById('package-notes');
+        const photoInput = document.getElementById('package-photo');
+        const previewWrap = document.getElementById('package-photo-preview-wrap');
+        const previewImage = document.getElementById('package-photo-preview');
+
+        if (residentSelect) residentSelect.value = '';
+        if (carrierInput) carrierInput.value = '';
+        if (codeInput) codeInput.value = '';
+        if (notesInput) notesInput.value = '';
+        if (photoInput) photoInput.value = '';
+        if (previewWrap) previewWrap.style.display = 'none';
+        if (previewImage) previewImage.src = '';
+
+        packagePhotoDataUrl = '';
+        setPackageFeedback('', 'info');
+        if (document.getElementById('package-form-feedback')) {
+            document.getElementById('package-form-feedback').style.display = 'none';
+        }
+    }
+
+    function readImageAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Falha ao ler a imagem.'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function resizeImage(dataUrl, maxWidth = 960, quality = 0.7) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+                const ratio = image.width > maxWidth ? maxWidth / image.width : 1;
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(image.width * ratio);
+                canvas.height = Math.round(image.height * ratio);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            image.onerror = () => reject(new Error('Não foi possível processar a foto.'));
+            image.src = dataUrl;
+        });
+    }
 
     // Load Dashboard Stats & Notices
     async function loadDashboardStats() {
@@ -175,6 +257,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('stat-residents').textContent = stats.activeResidents;
             document.getElementById('stat-opencalls').textContent = stats.openCalls;
             document.getElementById('stat-notices-count').textContent = stats.noticesCount;
+            const packagesBadge = document.getElementById('packages-summary-badge');
+            if (packagesBadge) packagesBadge.textContent = `${stats.pendingParcels || 0} aguardando retirada`;
 
             // Load Admin Notices
             const notices = await API.getNotices();
@@ -679,6 +763,132 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    async function loadPackages() {
+        const residentSelect = document.getElementById('package-resident-id');
+        const pendingList = document.getElementById('packages-pending-list');
+        const deliveredList = document.getElementById('packages-delivered-list');
+
+        if (pendingList) pendingList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Carregando...</div>';
+        if (deliveredList) deliveredList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Carregando...</div>';
+
+        try {
+            const [residents, parcels] = await Promise.all([
+                API.getResidents(),
+                API.getParcels()
+            ]);
+
+            currentParcels = parcels;
+
+            if (residentSelect) {
+                const currentValue = residentSelect.value;
+                residentSelect.innerHTML = '<option value="">Selecione o morador...</option>' +
+                    residents.map(res => `<option value="${res.id}">${res.name} (${res.unitDisplay})</option>`).join('');
+                residentSelect.value = currentValue || '';
+            }
+
+            const pending = parcels.filter(parcel => parcel.status === 'pending');
+            const delivered = parcels.filter(parcel => parcel.status === 'delivered');
+
+            document.getElementById('packages-pending-count').textContent = pending.length;
+            document.getElementById('packages-delivered-count').textContent = delivered.length;
+            const summaryBadge = document.getElementById('packages-summary-badge');
+            if (summaryBadge) summaryBadge.textContent = `${pending.length} aguardando retirada`;
+
+            if (pendingList) {
+                pendingList.innerHTML = pending.map(parcel => `
+                    <div class="notice-item" style="border-left-color: var(--warning);">
+                        <div style="display:flex; gap:12px; align-items:flex-start;">
+                            ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda de ${parcel.residentName}" style="width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--surface-border);">` : ''}
+                            <div style="flex:1;">
+                                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                    <div>
+                                        <div class="notice-title">${parcel.residentName}</div>
+                                        <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay} • Recebida em ${parcel.receivedAtLabel}</span>
+                                    </div>
+                                    <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:${parcel.notificationStatus === 'sent' ? 'rgba(34,197,94,0.18)' : 'rgba(245,158,11,0.18)'}; color:${parcel.notificationStatus === 'sent' ? 'var(--success)' : 'var(--warning)'};">
+                                        ${parcel.notificationStatus === 'sent' ? 'WhatsApp enviado' : 'Notificação pendente'}
+                                    </span>
+                                </div>
+                                <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
+                                    ${parcel.carrier ? `<div>Transportadora: ${parcel.carrier}</div>` : ''}
+                                    ${parcel.trackingCode ? `<div>Referência: ${parcel.trackingCode}</div>` : ''}
+                                    ${parcel.notes ? `<div>Obs.: ${parcel.notes}</div>` : ''}
+                                </div>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                                    <button class="btn btn-outline btn-parcel-whatsapp" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem;"><i data-lucide="message-circle" style="width:14px;"></i> WhatsApp</button>
+                                    <button class="btn btn-outline btn-parcel-deliver" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem; color:var(--success); border-color: rgba(34,197,94,0.35);"><i data-lucide="check-circle" style="width:14px;"></i> Dar baixa</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda pendente.</div>';
+            }
+
+            if (deliveredList) {
+                deliveredList.innerHTML = delivered.map(parcel => `
+                    <div class="notice-item" style="border-left-color: var(--success);">
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                            <div>
+                                <div class="notice-title">${parcel.residentName}</div>
+                                <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay}</span>
+                                <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
+                                    Recebida em ${parcel.receivedAtLabel}<br>
+                                    Entregue em ${parcel.deliveredAtLabel || 'Data não informada'}
+                                </div>
+                            </div>
+                            <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:rgba(34,197,94,0.18); color:var(--success);">
+                                Baixada por ${parcel.deliveredBy || 'funcionário'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda entregue ainda.</div>';
+            }
+
+            lucide.createIcons();
+
+            document.querySelectorAll('.btn-parcel-whatsapp').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const parcelId = e.currentTarget.getAttribute('data-id');
+                    const parcel = currentParcels.find(item => item.id === parcelId);
+                    if (!parcel) return;
+
+                    const phone = formatPhoneForWhatsApp(parcel.residentPhone);
+                    if (!phone) {
+                        alert('Este morador não possui telefone cadastrado.');
+                        return;
+                    }
+
+                    const message = encodeURIComponent(buildParcelWhatsAppMessage(parcel));
+                    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                    await API.markParcelNotified(parcelId);
+                    loadPackages();
+                    refreshNotifications();
+                });
+            });
+
+            document.querySelectorAll('.btn-parcel-deliver').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const parcelId = e.currentTarget.getAttribute('data-id');
+                    const sessionUser = API.checkSession();
+                    if (!confirm('Confirmar a baixa desta encomenda como entregue ao morador?')) return;
+
+                    await API.markParcelDelivered(parcelId, sessionUser?.name || 'Funcionário');
+                    loadPackages();
+                    loadDashboardStats();
+                    const selectedResident = document.getElementById('sim-resident-select')?.value;
+                    if (selectedResident) {
+                        document.getElementById('sim-resident-select').dispatchEvent(new Event('change'));
+                    }
+                    refreshNotifications();
+                });
+            });
+        } catch (error) {
+            console.error('Erro ao carregar encomendas:', error);
+            if (pendingList) pendingList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Erro ao carregar encomendas.</div>';
+            if (deliveredList) deliveredList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Erro ao carregar histórico.</div>';
+        }
+    }
+
     // --- MODAL LOGIC (RESIDENTS) ---
     const modal = document.getElementById('add-resident-modal');
     const btnOpenModal = document.getElementById('btn-open-add-resident');
@@ -723,14 +933,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadDashboardStats();
     });
 
+    document.getElementById('package-photo')?.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        const previewWrap = document.getElementById('package-photo-preview-wrap');
+        const previewImage = document.getElementById('package-photo-preview');
+
+        if (!file) {
+            packagePhotoDataUrl = '';
+            if (previewWrap) previewWrap.style.display = 'none';
+            return;
+        }
+
+        try {
+            const rawDataUrl = await readImageAsDataUrl(file);
+            packagePhotoDataUrl = await resizeImage(rawDataUrl);
+            if (previewImage) previewImage.src = packagePhotoDataUrl;
+            if (previewWrap) previewWrap.style.display = 'block';
+            setPackageFeedback('Foto pronta para salvar junto com a encomenda.', 'success');
+        } catch (error) {
+            console.error('Erro ao preparar foto da encomenda:', error);
+            packagePhotoDataUrl = '';
+            setPackageFeedback('Não foi possível processar a foto selecionada.', 'error');
+        }
+    });
+
+    document.getElementById('btn-clear-package-form')?.addEventListener('click', () => {
+        resetPackageForm();
+    });
+
+    document.getElementById('btn-save-package')?.addEventListener('click', async (e) => {
+        const residentId = document.getElementById('package-resident-id')?.value;
+        const carrier = document.getElementById('package-carrier')?.value.trim();
+        const trackingCode = document.getElementById('package-code')?.value.trim();
+        const notes = document.getElementById('package-notes')?.value.trim();
+        const sessionUser = API.checkSession();
+        const button = e.currentTarget;
+
+        if (!residentId) {
+            setPackageFeedback('Selecione o morador para vincular a encomenda.', 'error');
+            return;
+        }
+
+        if (!packagePhotoDataUrl) {
+            setPackageFeedback('Tire ou selecione uma foto da encomenda antes de salvar.', 'error');
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'Salvando...';
+
+        try {
+            await API.addParcel({
+                residentId,
+                carrier,
+                trackingCode,
+                notes,
+                photoDataUrl: packagePhotoDataUrl,
+                receivedBy: sessionUser?.name || 'Portaria'
+            });
+
+            resetPackageForm();
+            setPackageFeedback('Encomenda registrada com sucesso. Abra o WhatsApp para avisar o morador.', 'success');
+            await loadPackages();
+            loadDashboardStats();
+            loadPortalSim(true);
+            refreshNotifications();
+        } catch (error) {
+            console.error('Erro ao salvar encomenda:', error);
+            setPackageFeedback('Erro ao registrar encomenda. Tente novamente.', 'error');
+        }
+
+        button.disabled = false;
+        button.innerHTML = '<i data-lucide="plus" style="width:18px;"></i> Registrar Encomenda';
+        lucide.createIcons();
+    });
+
     // --- PORTAL DO MORADOR LOGIC --- //
-    async function loadPortalSim() {
+    async function loadPortalSim(forceReload = false) {
         const select = document.getElementById('sim-resident-select');
         try {
             const res = await API.getResidents();
-            if(select.options.length <= 1) { // Só carregar se tiver vazio
+            const currentValue = select.value;
+            if(forceReload || select.options.length <= 1) { // Só carregar se tiver vazio
                 select.innerHTML = '<option value="">Entrar como morador...</option>' + 
                 res.map(r => `<option value="${r.id}">${r.name} (${r.unitDisplay})</option>`).join('');
+                if (currentValue && res.some(r => r.id === currentValue)) {
+                    select.value = currentValue;
+                }
             }
         } catch(e) {}
     }
@@ -750,6 +1039,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const me = await API.getResidentData(id);
             const notices = await API.getNotices();
             const maint = await API.getMaintenance();
+            const parcels = await API.getResidentParcels(id);
             
             // Switch UI
             portalLocked.style.display = 'none';
@@ -779,6 +1069,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                 </div>
             `).join('') || `<p style="font-size:0.85rem; color:#888;">Sem chamados abertos.</p>`;
+
+            document.getElementById('portal-my-packages').innerHTML = parcels.map(parcel => `
+                <div class="notice-item" style="border-left-color: ${parcel.status === 'pending' ? 'var(--warning)' : 'var(--success)'}; padding: 10px;">
+                    ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda" style="width:100%; max-height:160px; object-fit:cover; border-radius:12px; margin-bottom:10px; border:1px solid var(--surface-border);">` : ''}
+                    <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+                        <b style="font-size:0.85rem">${parcel.carrier || 'Encomenda recebida'}</b>
+                        <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:${parcel.status === 'pending' ? 'rgba(245,158,11,0.18)' : 'rgba(34,197,94,0.18)'}; color:${parcel.status === 'pending' ? 'var(--warning)' : 'var(--success)'};">
+                            ${parcel.status === 'pending' ? 'Aguardando retirada' : 'Já entregue'}
+                        </span>
+                    </div>
+                    <div style="font-size:0.82rem; color:#ddd; margin-top:8px;">
+                        <div>Recebida em ${parcel.receivedAtLabel}</div>
+                        ${parcel.trackingCode ? `<div>Referência: ${parcel.trackingCode}</div>` : ''}
+                        ${parcel.notes ? `<div>Obs.: ${parcel.notes}</div>` : ''}
+                        ${parcel.status === 'delivered' ? `<div>Retirada registrada em ${parcel.deliveredAtLabel || '-'}</div>` : ''}
+                    </div>
+                </div>
+            `).join('') || `<p style="font-size:0.85rem; color:#888;">Nenhuma encomenda vinculada no momento.</p>`;
 
         } catch(e) {
             console.error(e);
@@ -1014,12 +1322,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const notices = await API.getNotices();
             const maintenance = await API.getMaintenance();
+            const parcels = await API.getParcels();
             const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
 
             // Combine and format
             let allNotifs = [
                 ...notices.map(n => ({ id: `notice_${n.id}`, title: n.title, text: n.content, date: n.date, icon: 'info', color: 'purple', target: 'dashboard' })),
-                ...maintenance.filter(m => m.status === 'open').map(m => ({ id: `maint_${m.id}`, title: 'Chamado Aberto', text: `${m.title} na ${m.location}`, date: m.displayDate, icon: 'alert-circle', color: 'orange', target: 'maintenance' }))
+                ...maintenance.filter(m => m.status === 'open').map(m => ({ id: `maint_${m.id}`, title: 'Chamado Aberto', text: `${m.title} na ${m.location}`, date: m.displayDate, icon: 'alert-circle', color: 'orange', target: 'maintenance' })),
+                ...parcels.filter(p => p.status === 'pending').map(p => ({ id: `parcel_${p.id}`, title: 'Encomenda aguardando retirada', text: `${p.residentName} • ${p.unitDisplay}`, date: p.receivedAtLabel, icon: 'package', color: 'orange', target: 'packages' }))
             ];
 
             // Filter unread
@@ -1061,11 +1371,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         const notices = await API.getNotices();
         const maintenance = await API.getMaintenance();
+        const parcels = await API.getParcels();
         const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
         
         const currentIds = [
             ...notices.map(n => `notice_${n.id}`),
-            ...maintenance.map(m => `maint_${m.id}`)
+            ...maintenance.map(m => `maint_${m.id}`),
+            ...parcels.map(p => `parcel_${p.id}`)
         ];
 
         localStorage.setItem('condo_read_notifs', JSON.stringify([...new Set([...readIds, ...currentIds])]));

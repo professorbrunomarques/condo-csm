@@ -142,6 +142,89 @@ const firebaseConfig = {
           return doc.exists ? { id: doc.id, ...doc.data() } : null;
       },
   
+      // --- ENCOMENDAS ---
+      getParcels: async () => {
+          const [snapshot, residents, units] = await Promise.all([
+              db.collection("parcels").orderBy("receivedAt", "desc").get(),
+              window.BackendAPI.getResidents(),
+              window.BackendAPI.getUnits()
+          ]);
+
+          return snapshot.docs.map(doc => {
+              const data = doc.data();
+              const resident = residents.find(r => r.id === data.residentId);
+              const unit = units.find(u => u.id === data.unitId);
+
+              return {
+                  id: doc.id,
+                  ...data,
+                  residentName: resident ? resident.name : (data.residentName || "Morador não encontrado"),
+                  residentPhone: resident ? resident.phone : (data.residentPhone || ""),
+                  unitDisplay: resident ? resident.unitDisplay : (unit ? `${unit.blockName} - ${unit.number}` : "S/ unidade")
+              };
+          });
+      },
+
+      getResidentParcels: async (residentId) => {
+          const parcels = await window.BackendAPI.getParcels();
+          return parcels.filter(parcel => parcel.residentId === residentId);
+      },
+
+      addParcel: async (parcelData) => {
+          const resident = await window.BackendAPI.getResidentById(parcelData.residentId);
+          if (!resident) throw new Error("Morador não encontrado para esta encomenda.");
+
+          const unit = resident.unitId ? await window.BackendAPI.getUnitById(resident.unitId) : null;
+          const blocks = unit ? await window.BackendAPI.getBlocks() : [];
+          const block = unit ? blocks.find(item => item.id === unit.blockId) : null;
+          const now = new Date();
+
+          const payload = {
+              residentId: parcelData.residentId,
+              residentName: resident.name,
+              residentPhone: resident.phone || "",
+              unitId: resident.unitId || "",
+              unitDisplay: unit ? `${block ? block.name : "Bloco"} - ${unit.number}` : "S/ unidade",
+              carrier: parcelData.carrier || "",
+              trackingCode: parcelData.trackingCode || "",
+              notes: parcelData.notes || "",
+              photoDataUrl: parcelData.photoDataUrl || "",
+              receivedAt: now.toISOString(),
+              receivedAtLabel: now.toLocaleString("pt-BR"),
+              status: "pending",
+              notificationStatus: parcelData.notificationStatus || "pending",
+              notifiedAt: parcelData.notifiedAt || null,
+              deliveredAt: null,
+              deliveredAtLabel: "",
+              receivedBy: parcelData.receivedBy || "",
+              deliveredBy: "",
+              createdAt: now.getTime()
+          };
+
+          const docRef = await db.collection("parcels").add(payload);
+          return { id: docRef.id, ...payload };
+      },
+
+      markParcelNotified: async (id) => {
+          const now = new Date();
+          await db.collection("parcels").doc(id).update({
+              notificationStatus: "sent",
+              notifiedAt: now.toISOString()
+          });
+          return { success: true };
+      },
+
+      markParcelDelivered: async (id, deliveredBy) => {
+          const now = new Date();
+          await db.collection("parcels").doc(id).update({
+              status: "delivered",
+              deliveredAt: now.toISOString(),
+              deliveredAtLabel: now.toLocaleString("pt-BR"),
+              deliveredBy: deliveredBy || ""
+          });
+          return { success: true };
+      },
+
       // --- MANUTENÇÕES (CHAMADOS) ---
       getMaintenance: async () => {
           const snapshot = await db.collection("maintenance").orderBy("date", "desc").get();
@@ -195,16 +278,19 @@ const firebaseConfig = {
           const units = await window.BackendAPI.getUnits();
           const residents = await window.BackendAPI.getResidents();
           const maintenance = await window.BackendAPI.getMaintenance();
+          const parcels = await window.BackendAPI.getParcels();
           
           const occupied = units.filter(u => u.status === 'Ocupada').length;
           const openCalls = maintenance.filter(m => m.status === 'open').length;
+          const pendingParcels = parcels.filter(p => p.status === 'pending').length;
 
           return {
               totalUnits: units.length,
               activeResidents: residents.length,
               occupancy: `${occupied} Unidades`,
               openCalls: openCalls,
-              noticesCount: residents.length > 0 ? 12 : 0 // Exemplo de contagem
+              noticesCount: residents.length > 0 ? 12 : 0, // Exemplo de contagem
+              pendingParcels
           };
       },
 
@@ -276,7 +362,8 @@ const firebaseConfig = {
           
           return {
               ...res,
-              unitDisplay: unit ? `${block ? block.name : '?' } - ${unit.number}` : 'N/A'
+              unitDisplay: unit ? `${block ? block.name : '?' } - ${unit.number}` : 'N/A',
+              parcels: await window.BackendAPI.getResidentParcels(id)
           };
       },
 
