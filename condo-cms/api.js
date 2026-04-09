@@ -229,6 +229,16 @@ const firebaseConfig = {
           unitsCache = null;
       },
 
+      deleteUnits: async (ids) => {
+          const batch = db.batch();
+          ids.forEach(id => {
+              batch.delete(db.collection("units").doc(id));
+          });
+          await batch.commit();
+          unitsCache = null;
+          return { success: true, count: ids.length };
+      },
+
       generateUnitsForBlock: async (blockId) => {
           const batch = db.batch();
           const floors = 8;
@@ -287,6 +297,28 @@ const firebaseConfig = {
       deleteUser: async (id) => {
           // Impedir deleção se for o último admin? (Melhor tratar no frontend)
           await db.collection("users").doc(id).delete();
+      },
+
+      updateUserProfile: async (id, data) => {
+          await db.collection("users").doc(id).update(data);
+          // Atualizar sessão local com novos dados
+          const session = JSON.parse(localStorage.getItem("condo_admin_user") || "null");
+          if (session && session.id === id) {
+              Object.assign(session, data);
+              localStorage.setItem("condo_admin_user", JSON.stringify(session));
+          }
+          return { success: true };
+      },
+
+      changeUserPassword: async (id, currentPassword, newPassword) => {
+          const doc = await db.collection("users").doc(id).get();
+          if (!doc.exists) return { success: false, message: "Usuário não encontrado." };
+          const userData = doc.data();
+          if (userData.password !== currentPassword) {
+              return { success: false, message: "Senha atual incorreta." };
+          }
+          await db.collection("users").doc(id).update({ password: newPassword });
+          return { success: true };
       },
 
         login: async (username, password) => {

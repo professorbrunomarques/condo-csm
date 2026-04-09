@@ -267,7 +267,10 @@
                     <div class="section-card glass" style="display: flex; flex-direction: column;">
                         <div class="section-header" style="justify-content: space-between; align-items: center;">
                             <h2 class="section-title" style="margin-bottom:0;">Unidades (Apartamentos)</h2>
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn" id="btn-delete-selected-units"
+                                    style="padding: 6px 12px; font-size: 0.85rem; background: var(--danger); display: none;"><i data-lucide="trash-2"
+                                        style="width:14px;"></i> Remover (<span id="selected-units-count">0</span>)</button>
                                 <input type="text" id="unit-search-input" placeholder="Filtrar Bloco ou Nº..."
                                     style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.05); color: white; width: 200px; font-size:0.85rem;">
                                 <button class="btn btn-outline" id="btn-add-unit"
@@ -279,6 +282,9 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th style="position: sticky; top: 0; background: var(--surface-color); z-index: 1; width: 40px;">
+                                            <input type="checkbox" id="select-all-units" style="width:auto; cursor:pointer;">
+                                        </th>
                                         <th
                                             style="position: sticky; top: 0; background: var(--surface-color); z-index: 1;">
                                             Bloco</th>
@@ -408,13 +414,13 @@
                                 <label
                                     style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Nome
                                     Completo</label>
-                                <input type="text" id="profile-name" value="" readonly>
+                                <input type="text" id="profile-name" value="">
                             </div>
                             <div>
                                 <label
                                     style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Usuário
                                     de Acesso</label>
-                                <input type="text" id="profile-username" value="" readonly>
+                                <input type="text" id="profile-username" value="">
                             </div>
                             <div>
                                 <label
@@ -424,6 +430,10 @@
                                     style="background:var(--primary); color:white; font-weight:700; padding:4px 12px; border-radius:30px; position:static; width:auto; height:auto; box-shadow:0 0 15px rgba(139,92,246,0.3);">Carregando...</span>
                             </div>
                         </div>
+                        <div style="display:flex; gap:10px; margin-top:1.5rem;">
+                            <button class="btn" id="btn-save-profile" style="flex:1; justify-content:center;">Salvar Alterações</button>
+                        </div>
+                        <p id="profile-save-feedback" style="font-size:0.75rem; color:var(--success); margin-top:8px; display:none;">✅ Perfil atualizado com sucesso!</p>
                     </div>
 
                     <div class="section-card glass">
@@ -433,9 +443,22 @@
                                 <label
                                     style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Senha
                                     Atual</label>
-                                <input type="password" value="********" readonly>
+                                <input type="password" id="profile-current-password" placeholder="Digite sua senha atual">
                             </div>
-                            <button class="btn btn-outline" style="width:fit-content;">Alterar Senha</button>
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Nova
+                                    Senha</label>
+                                <input type="password" id="profile-new-password" placeholder="Digite a nova senha">
+                            </div>
+                            <div>
+                                <label
+                                    style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Confirmar
+                                    Nova Senha</label>
+                                <input type="password" id="profile-confirm-password" placeholder="Confirme a nova senha">
+                            </div>
+                            <button class="btn btn-outline" id="btn-change-password" style="width:fit-content;">Alterar Senha</button>
+                            <p id="password-feedback" style="font-size:0.75rem; margin-top:-10px; display:none;"></p>
                             <p style="font-size:0.75rem; color:var(--text-muted);">Recomendamos trocar sua senha a cada
                                 90 dias para manter a segurança do condomínio.</p>
                         </div>

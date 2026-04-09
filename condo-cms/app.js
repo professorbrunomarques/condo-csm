@@ -306,10 +306,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    let selectedUnitIds = new Set();
+
+    function updateBulkDeleteButton() {
+        const btn = document.getElementById('btn-delete-selected-units');
+        const count = document.getElementById('selected-units-count');
+        if (btn && count) {
+            count.textContent = selectedUnitIds.size;
+            btn.style.display = selectedUnitIds.size > 0 ? 'flex' : 'none';
+        }
+    }
+
     function renderUnits(unitsArray) {
         const unitsBody = document.getElementById('units-tbody');
+        selectedUnitIds.clear();
+        updateBulkDeleteButton();
+
+        // Reset select-all checkbox
+        const selectAll = document.getElementById('select-all-units');
+        if (selectAll) selectAll.checked = false;
+
         unitsBody.innerHTML = unitsArray.map(u => `
             <tr>
+                <td><input type="checkbox" class="unit-checkbox" data-id="${u.id}" style="width:auto; cursor:pointer;"></td>
                 <td>${u.blockName}</td>
                 <td>${u.number}</td>
                 <td>
@@ -317,9 +336,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <button class="btn btn-outline btn-del-unit" data-id="${u.id}" style="padding: 4px 8px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i data-lucide="trash-2" style="width: 14px;"></i></button>
                 </td>
             </tr>
-        `).join('') || `<tr><td colspan="3">Nenhuma unidade compatível</td></tr>`;
+        `).join('') || `<tr><td colspan="4">Nenhuma unidade compatível</td></tr>`;
         
         lucide.createIcons();
+
+        // Checkbox selection handlers
+        document.querySelectorAll('.unit-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = e.target.getAttribute('data-id');
+                if (e.target.checked) {
+                    selectedUnitIds.add(id);
+                } else {
+                    selectedUnitIds.delete(id);
+                }
+                updateBulkDeleteButton();
+
+                // Sync select-all state
+                const allBoxes = document.querySelectorAll('.unit-checkbox');
+                const allChecked = [...allBoxes].every(c => c.checked);
+                if (selectAll) selectAll.checked = allBoxes.length > 0 && allChecked;
+            });
+        });
 
         // Unit Handlers
         document.querySelectorAll('.btn-edit-unit').forEach(btn => btn.addEventListener('click', async (e) => {
@@ -344,6 +381,46 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }));
     }
+
+    // Select All / Deselect All
+    document.getElementById('select-all-units')?.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        document.querySelectorAll('.unit-checkbox').forEach(cb => {
+            cb.checked = checked;
+            const id = cb.getAttribute('data-id');
+            if (checked) {
+                selectedUnitIds.add(id);
+            } else {
+                selectedUnitIds.delete(id);
+            }
+        });
+        updateBulkDeleteButton();
+    });
+
+    // Bulk Delete
+    document.getElementById('btn-delete-selected-units')?.addEventListener('click', async () => {
+        const count = selectedUnitIds.size;
+        if (count === 0) return;
+
+        if (!confirm(`Tem certeza que deseja remover ${count} unidade(s)? Moradores vinculados ficarão sem unidade.`)) return;
+
+        const btn = document.getElementById('btn-delete-selected-units');
+        btn.innerHTML = '<span style="font-size:0.8rem;">Removendo...</span>';
+        btn.disabled = true;
+
+        try {
+            await API.deleteUnits([...selectedUnitIds]);
+            selectedUnitIds.clear();
+            updateBulkDeleteButton();
+            loadOrg();
+            loadDashboardStats();
+        } catch (err) {
+            console.error("Erro ao remover unidades em lote:", err);
+            alert("Erro ao remover unidades. Tente novamente.");
+        }
+
+        btn.disabled = false;
+    });
 
     // Units Filter
     document.getElementById('unit-search-input')?.addEventListener('input', (e) => {
@@ -749,6 +826,108 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         await API.addUser({ name, username, password, role });
         loadUsers();
+    });
+
+    // --- PROFILE SAVE LOGIC ---
+    document.getElementById('btn-save-profile')?.addEventListener('click', async () => {
+        const sessionUser = API.checkSession();
+        if (!sessionUser) return alert("Sessão expirada. Faça login novamente.");
+
+        const newName = document.getElementById('profile-name').value.trim();
+        const newUsername = document.getElementById('profile-username').value.trim();
+        const feedback = document.getElementById('profile-save-feedback');
+
+        if (!newName || !newUsername) return alert("Nome e Usuário não podem ficar vazios.");
+
+        const btn = document.getElementById('btn-save-profile');
+        btn.textContent = "Salvando...";
+        btn.disabled = true;
+
+        try {
+            await API.updateUserProfile(sessionUser.id, { 
+                name: newName, 
+                username: newUsername.toLowerCase() 
+            });
+
+            // Atualizar nome no header
+            const adminNameEl = document.querySelector('.admin-name');
+            if (adminNameEl) adminNameEl.textContent = newName;
+
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--success)';
+            feedback.textContent = '✅ Perfil atualizado com sucesso!';
+            setTimeout(() => { feedback.style.display = 'none'; }, 3000);
+        } catch (err) {
+            console.error("Erro ao salvar perfil:", err);
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger)';
+            feedback.textContent = '❌ Erro ao salvar. Tente novamente.';
+        }
+
+        btn.textContent = "Salvar Alterações";
+        btn.disabled = false;
+    });
+
+    // --- PASSWORD CHANGE LOGIC ---
+    document.getElementById('btn-change-password')?.addEventListener('click', async () => {
+        const sessionUser = API.checkSession();
+        if (!sessionUser) return alert("Sessão expirada. Faça login novamente.");
+
+        const currentPwd = document.getElementById('profile-current-password').value;
+        const newPwd = document.getElementById('profile-new-password').value;
+        const confirmPwd = document.getElementById('profile-confirm-password').value;
+        const feedback = document.getElementById('password-feedback');
+
+        if (!currentPwd || !newPwd || !confirmPwd) {
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger)';
+            feedback.textContent = '⚠️ Preencha todos os campos de senha.';
+            return;
+        }
+
+        if (newPwd !== confirmPwd) {
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger)';
+            feedback.textContent = '⚠️ A nova senha e a confirmação não coincidem.';
+            return;
+        }
+
+        if (newPwd.length < 4) {
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger)';
+            feedback.textContent = '⚠️ A nova senha deve ter pelo menos 4 caracteres.';
+            return;
+        }
+
+        const btn = document.getElementById('btn-change-password');
+        btn.textContent = "Alterando...";
+        btn.disabled = true;
+
+        try {
+            const result = await API.changeUserPassword(sessionUser.id, currentPwd, newPwd);
+            if (result.success) {
+                feedback.style.display = 'block';
+                feedback.style.color = 'var(--success)';
+                feedback.textContent = '✅ Senha alterada com sucesso!';
+                // Limpar campos
+                document.getElementById('profile-current-password').value = '';
+                document.getElementById('profile-new-password').value = '';
+                document.getElementById('profile-confirm-password').value = '';
+            } else {
+                feedback.style.display = 'block';
+                feedback.style.color = 'var(--danger)';
+                feedback.textContent = `❌ ${result.message}`;
+            }
+        } catch (err) {
+            console.error("Erro ao alterar senha:", err);
+            feedback.style.display = 'block';
+            feedback.style.color = 'var(--danger)';
+            feedback.textContent = '❌ Erro no servidor. Tente novamente.';
+        }
+
+        btn.textContent = "Alterar Senha";
+        btn.disabled = false;
+        setTimeout(() => { feedback.style.display = 'none'; }, 5000);
     });
 
     console.log("✅ Sistema pronto e listeners anexados.");
