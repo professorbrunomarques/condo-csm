@@ -100,15 +100,25 @@ const firebaseConfig = {
   
       // --- MORADORES ---
       getResidents: async () => {
-          const snapshot = await db.collection("residents").get();
-          const units = await window.BackendAPI.getUnits();
+          const [snapshot, units, vehicles] = await Promise.all([
+              db.collection("residents").get(),
+              window.BackendAPI.getUnits(),
+              window.BackendAPI.getVehicles()
+          ]);
+          const vehiclesMap = vehicles.reduce((acc, vehicle) => {
+              acc[vehicle.residentId] = (acc[vehicle.residentId] || 0) + 1;
+              return acc;
+          }, {});
           return snapshot.docs.map(doc => {
               const data = doc.data();
               const unit = units.find(u => u.id === data.unitId);
+              const vehiclesCount = vehiclesMap[doc.id] || 0;
               return {
                   id: doc.id,
                   ...data,
-                  unitDisplay: unit ? `${unit.blockName} - ${unit.number}` : "S/ Unidade"
+                  unitDisplay: unit ? `${unit.blockName} - ${unit.number}` : "S/ Unidade",
+                  vehiclesCount,
+                  vehicles: String(vehiclesCount)
               };
           });
       },
@@ -124,6 +134,26 @@ const firebaseConfig = {
           }
           return { id: docRef.id, ...residentData };
       },
+
+      updateResident: async (id, residentData) => {
+          const current = await db.collection("residents").doc(id).get();
+          if (!current.exists) throw new Error("Morador não encontrado.");
+
+          const prevData = current.data();
+          const prevUnitId = prevData.unitId || null;
+          const nextUnitId = residentData.unitId || null;
+
+          await db.collection("residents").doc(id).update(residentData);
+
+          if (prevUnitId && prevUnitId !== nextUnitId) {
+              await window.BackendAPI.updateUnit(prevUnitId, { status: "Vazia" });
+          }
+          if (nextUnitId && prevUnitId !== nextUnitId) {
+              await window.BackendAPI.updateUnit(nextUnitId, { status: "Ocupada" });
+          }
+
+          return { success: true };
+      },
   
       deleteResident: async (id) => {
           const res = await db.collection("residents").doc(id).get();
@@ -132,6 +162,12 @@ const firebaseConfig = {
               if(data.unitId) {
                   // Desocupa a unidade
                   await window.BackendAPI.updateUnit(data.unitId, { status: "Vazia" });
+              }
+              const vehiclesSnapshot = await db.collection("vehicles").where("residentId", "==", id).get();
+              if (!vehiclesSnapshot.empty) {
+                  const batch = db.batch();
+                  vehiclesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+                  await batch.commit();
               }
               await db.collection("residents").doc(id).delete();
           }
@@ -360,11 +396,64 @@ const firebaseConfig = {
           const unit = units.find(u => u.id === res.unitId);
           const block = unit ? blocks.find(b => b.id === unit.blockId) : null;
           
+          const vehicles = await window.BackendAPI.getVehiclesByResident(id);
+
           return {
               ...res,
               unitDisplay: unit ? `${block ? block.name : '?' } - ${unit.number}` : 'N/A',
+              vehiclesCount: vehicles.length,
+              vehicles: String(vehicles.length),
               parcels: await window.BackendAPI.getResidentParcels(id)
           };
+      },
+
+      // --- VEÍCULOS ---
+      getVehicles: async () => {
+          const snapshot = await db.collection("vehicles").orderBy("createdAt", "desc").get();
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      },
+
+      getVehiclesByResident: async (residentId) => {
+          const snapshot = await db.collection("vehicles")
+              .where("residentId", "==", residentId)
+              .get();
+          return snapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+      },
+
+      addVehicle: async (vehicleData) => {
+          const currentVehicles = await window.BackendAPI.getVehiclesByResident(vehicleData.residentId);
+          if (currentVehicles.length >= 3) throw new Error("Cada morador pode cadastrar no máximo 3 veículos.");
+
+          const payload = {
+              residentId: vehicleData.residentId,
+              type: vehicleData.type,
+              brandModel: vehicleData.brandModel,
+              color: vehicleData.color || "",
+              plate: vehicleData.plate || "",
+              tag: vehicleData.tag || "",
+              createdAt: new Date().toISOString()
+          };
+          const docRef = await db.collection("vehicles").add(payload);
+          return { id: docRef.id, ...payload };
+      },
+
+      updateVehicle: async (id, vehicleData) => {
+          const payload = {
+              type: vehicleData.type,
+              brandModel: vehicleData.brandModel,
+              color: vehicleData.color || "",
+              plate: vehicleData.plate || "",
+              tag: vehicleData.tag || ""
+          };
+          await db.collection("vehicles").doc(id).update(payload);
+          return { success: true };
+      },
+
+      deleteVehicle: async (id) => {
+          await db.collection("vehicles").doc(id).delete();
+          return { success: true };
       },
 
       // --- USUÁRIOS DO SISTEMA (AUTH) ---

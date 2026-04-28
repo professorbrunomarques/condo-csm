@@ -168,8 +168,34 @@
             `).join('') || `<span style="font-size:0.8rem; color:var(--text-muted);">Você não tem chamados abertos.</span>`;
         }
 
+        function openIssueModal() {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
+                overlay.innerHTML = `
+                    <div style="width:420px;max-width:calc(100vw - 32px);background:var(--surface-color);border:1px solid var(--surface-border);border-radius:14px;padding:1rem;">
+                        <h3 style="margin:0 0 .8rem 0;">Abrir Chamado</h3>
+                        <textarea id="issue-input" rows="4" placeholder="Descreva o problema..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--surface-border);background:rgba(0,0,0,.2);color:var(--text-main);font-family:inherit;"></textarea>
+                        <div style="display:flex;gap:.7rem;margin-top:.8rem;">
+                            <button id="issue-cancel" style="flex:1;padding:.55rem;border-radius:8px;border:1px solid var(--surface-border);background:transparent;color:var(--text-main);cursor:pointer;">Cancelar</button>
+                            <button id="issue-save" style="flex:1;padding:.55rem;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;">Enviar</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                const close = (value = null) => { overlay.remove(); resolve(value); };
+                overlay.querySelector('#issue-cancel').onclick = () => close(null);
+                overlay.onclick = (e) => { if (e.target === overlay) close(null); };
+                overlay.querySelector('#issue-save').onclick = () => {
+                    const value = overlay.querySelector('#issue-input').value.trim();
+                    if (!value) return;
+                    close(value);
+                };
+            });
+        }
+
         document.getElementById('btn-open-call').addEventListener('click', async () => {
-            const issue = prompt("Descreva qual o problema para a manutenção:");
+            const issue = await openIssueModal();
             if(issue) {
                 await window.BackendAPI.addMaintenance(issue, loggedResident.unitDisplay);
                 alert("Chamado aberto para o síndico!");

@@ -8,6 +8,32 @@ if (typeof lucide !== 'undefined') {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("🚀 Aplicativo iniciando...");
     
+    // --- THEME TOGGLE (LIGHT / DARK) ---
+    const THEME_KEY = 'condo_theme';
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const getPreferredTheme = () => {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
+        return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+
+    const applyTheme = (theme) => {
+        document.body.setAttribute('data-theme', theme);
+        if (themeToggleBtn) {
+            themeToggleBtn.innerHTML = `<i data-lucide="${theme === 'light' ? 'sun' : 'moon'}"></i>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    };
+
+    let currentTheme = getPreferredTheme();
+    applyTheme(currentTheme);
+
+    themeToggleBtn?.addEventListener('click', () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem(THEME_KEY, currentTheme);
+        applyTheme(currentTheme);
+    });
+    
     // --- AUTH GUARD ---
     const API = window.BackendAPI;
     if (!API) {
@@ -55,12 +81,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log("Vinculando listener de Alterar Foto...");
     const btnChangePhoto = document.getElementById('btn-change-photo');
     if (btnChangePhoto) {
-        btnChangePhoto.onclick = () => {
+        btnChangePhoto.onclick = async () => {
             console.log("Evento onclick disparado em Alterar Foto");
-            const newUrl = prompt("Insira a URL da imagem (JPG/PNG):", savedPhoto || "https://i.pravatar.cc/150?u=admin");
-            if (newUrl && newUrl.trim() !== '') {
-                localStorage.setItem('condo_user_photo', newUrl.trim());
-                updateAvatars(newUrl.trim());
+            const result = await openFormModal({
+                title: 'Alterar Foto de Perfil',
+                submitLabel: 'Salvar',
+                fields: [
+                    { name: 'url', label: 'URL da Imagem (JPG/PNG)', type: 'text', value: savedPhoto || "https://i.pravatar.cc/150?u=admin", required: true }
+                ]
+            });
+            if (result?.url && result.url.trim() !== '') {
+                localStorage.setItem('condo_user_photo', result.url.trim());
+                updateAvatars(result.url.trim());
             }
         };
     } else {
@@ -167,7 +199,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentResidents = []; // Cache for filtering & exporting
     let currentUnits = []; // Cache for unit filtering
     let currentParcels = [];
+    let currentVehicleResidentId = '';
+    let currentVehicles = [];
+    let editingResidentId = '';
+    let editingVehicleId = '';
     let packagePhotoDataUrl = '';
+
+    const genericFormModal = document.getElementById('generic-form-modal');
+    const genericFormTitle = document.getElementById('generic-form-title');
+    const genericFormFields = document.getElementById('generic-form-fields');
+    const genericFormCancel = document.getElementById('generic-form-cancel');
+    const genericFormSave = document.getElementById('generic-form-save');
+
+    function escapeHtml(value = '') {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function openFormModal({ title, submitLabel = 'Salvar', fields = [] }) {
+        return new Promise((resolve) => {
+            genericFormTitle.textContent = title;
+            genericFormSave.textContent = submitLabel;
+
+            genericFormFields.innerHTML = fields.map((field) => {
+                const required = field.required ? 'required' : '';
+                const label = field.label ? `<label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">${escapeHtml(field.label)}</label>` : '';
+                if (field.type === 'select') {
+                    const options = (field.options || []).map(opt => `<option value="${escapeHtml(opt.value)}" ${String(opt.value) === String(field.value ?? '') ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('');
+                    return `<div>${label}<select data-field="${escapeHtml(field.name)}" ${required}>${options}</select></div>`;
+                }
+                if (field.type === 'textarea') {
+                    return `<div>${label}<textarea data-field="${escapeHtml(field.name)}" placeholder="${escapeHtml(field.placeholder || '')}" ${required}>${escapeHtml(field.value || '')}</textarea></div>`;
+                }
+                return `<div>${label}<input type="${escapeHtml(field.type || 'text')}" data-field="${escapeHtml(field.name)}" value="${escapeHtml(field.value || '')}" placeholder="${escapeHtml(field.placeholder || '')}" ${required}></div>`;
+            }).join('');
+
+            const close = (result = null) => {
+                genericFormModal.style.display = 'none';
+                genericFormCancel.onclick = null;
+                genericFormSave.onclick = null;
+                genericFormModal.onclick = null;
+                resolve(result);
+            };
+
+            genericFormCancel.onclick = () => close(null);
+            genericFormModal.onclick = (e) => {
+                if (e.target === genericFormModal) close(null);
+            };
+            genericFormSave.onclick = () => {
+                const values = {};
+                const invalidField = fields.find((field) => {
+                    const el = genericFormFields.querySelector(`[data-field="${field.name}"]`);
+                    if (!el) return false;
+                    values[field.name] = el.value;
+                    return field.required && !String(el.value || '').trim();
+                });
+                if (invalidField) {
+                    alert(`Preencha o campo obrigatório: ${invalidField.label || invalidField.name}`);
+                    return;
+                }
+                close(values);
+            };
+
+            genericFormModal.style.display = 'flex';
+        });
+    }
 
     function formatPhoneForWhatsApp(phone = '') {
         return String(phone).replace(/\D/g, '');
@@ -377,8 +477,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const blocksBody = document.getElementById('blocks-tbody');
         const unitsBody = document.getElementById('units-tbody');
         
-        blocksBody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
-        unitsBody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
+        blocksBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
+        unitsBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
         
         try {
             const blocks = await API.getBlocks();
@@ -386,7 +486,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             blocksBody.innerHTML = blocks.map(b => `
                 <tr>
-                    <td>${b.id}</td>
                     <td>${b.name}</td>
                     <td>
                         <button class="btn btn-outline btn-gen-unit" data-id="${b.id}" style="padding: 4px 8px; color: var(--warning); border-color: rgba(245, 158, 11, 0.3);" title="Gerar 96 Unidades"><i data-lucide="wand" style="width: 14px;"></i></button>
@@ -394,7 +493,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <button class="btn btn-outline btn-del-block" data-id="${b.id}" style="padding: 4px 8px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i data-lucide="trash-2" style="width: 14px;"></i></button>
                     </td>
                 </tr>
-            `).join('') || `<tr><td colspan="3">Sem blocos</td></tr>`;
+            `).join('') || `<tr><td colspan="2">Sem blocos</td></tr>`;
             
             renderUnits(currentUnits);
             lucide.createIcons();
@@ -403,7 +502,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.querySelectorAll('.btn-edit-block').forEach(btn => btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.getAttribute('data-id');
                 const oldName = e.currentTarget.getAttribute('data-name');
-                const newName = prompt("Editar nome do bloco:", oldName);
+                const result = await openFormModal({
+                    title: 'Editar Bloco',
+                    submitLabel: 'Salvar',
+                    fields: [{ name: 'name', label: 'Nome do Bloco', type: 'text', value: oldName, required: true }]
+                });
+                const newName = result?.name?.trim();
                 if (newName && newName !== oldName) {
                     await API.updateBlock(id, newName);
                     loadOrg(); loadDashboardStats();
@@ -489,15 +593,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('.btn-edit-unit').forEach(btn => btn.addEventListener('click', async (e) => {
             const id = e.currentTarget.getAttribute('data-id');
             const blocks = await API.getBlocks();
-            let blockStr = blocks.map(b => `${b.id} - ${b.name}`).join("\\n");
-            
-            const newBlock = prompt(`Novo ID do Bloco:\\n${blockStr}`, e.currentTarget.getAttribute('data-block'));
-            if (newBlock) {
-                const newNum = prompt("Novo número da unidade:", e.currentTarget.getAttribute('data-num'));
-                if (newNum) {
-                    await API.updateUnit(id, newBlock, newNum);
-                    loadOrg(); loadDashboardStats();
-                }
+            const result = await openFormModal({
+                title: 'Editar Unidade',
+                submitLabel: 'Salvar',
+                fields: [
+                    {
+                        name: 'blockId',
+                        label: 'Bloco',
+                        type: 'select',
+                        value: e.currentTarget.getAttribute('data-block'),
+                        required: true,
+                        options: blocks.map(b => ({ value: b.id, label: b.name }))
+                    },
+                    {
+                        name: 'number',
+                        label: 'Número da Unidade',
+                        type: 'text',
+                        value: e.currentTarget.getAttribute('data-num'),
+                        required: true
+                    }
+                ]
+            });
+            if (result) {
+                await API.updateUnit(id, { blockId: result.blockId, number: parseInt(result.number, 10) });
+                loadOrg(); loadDashboardStats();
             }
         }));
         document.querySelectorAll('.btn-del-unit').forEach(btn => btn.addEventListener('click', async (e) => {
@@ -560,7 +679,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('btn-add-block')?.addEventListener('click', async () => {
-        const name = prompt("Digite o nome do novo Bloco (ex: Bloco C):");
+        const result = await openFormModal({
+            title: 'Novo Bloco',
+            submitLabel: 'Criar',
+            fields: [{ name: 'name', label: 'Nome do Bloco', type: 'text', placeholder: 'Ex: Bloco C', required: true }]
+        });
+        const name = result?.name?.trim();
         if(name) {
             await API.addBlock(name);
             loadOrg();
@@ -571,16 +695,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-add-unit')?.addEventListener('click', async () => {
         const blocks = await API.getBlocks();
         if(blocks.length === 0) return alert("Crie um bloco primeiro!");
-        
-        let blockStr = blocks.map(b => `${b.id} - ${b.name}`).join("\n");
-        const blockId = prompt(`Digite o ID do Bloco a qual a unidade pertence:\n${blockStr}`);
-        if(blockId) {
-            const number = prompt("Digite o número da unidade (ex: 405):");
-            if(number) {
-                await API.addUnit(blockId, number);
-                loadOrg();
-                loadDashboardStats();
-            }
+
+        const result = await openFormModal({
+            title: 'Nova Unidade',
+            submitLabel: 'Criar',
+            fields: [
+                { name: 'blockId', label: 'Bloco', type: 'select', required: true, options: blocks.map(b => ({ value: b.id, label: b.name })) },
+                { name: 'number', label: 'Número da Unidade', type: 'text', placeholder: 'Ex: 405', required: true }
+            ]
+        });
+        if(result?.blockId && result?.number) {
+            await API.addUnit(result.blockId, result.number);
+            loadOrg();
+            loadDashboardStats();
         }
     });
 
@@ -592,6 +719,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             currentResidents = await API.getResidents();
             renderResidents(currentResidents);
+            await populateVehicleResidentSelect(currentVehicleResidentId);
+            if (currentVehicleResidentId) {
+                await loadVehiclesByResident(currentVehicleResidentId);
+            } else {
+                renderVehiclesTable([]);
+            }
         } catch (error) {
             console.error("Erro ao carregar moradores:", error);
         }
@@ -613,8 +746,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${res.name}</td>
                 <td>${res.unitDisplay}</td>
                 <td>${res.phone}</td>
-                <td>${res.vehicles}</td>
+                <td>${res.vehiclesCount || 0}</td>
                 <td>
+                    <button class="btn btn-outline btn-open-vehicles" data-id="${res.id}" style="padding: 4px 8px;" title="Gerenciar veículos">
+                        <i data-lucide="car" style="width: 16px;"></i>
+                    </button>
+                    <button class="btn btn-outline btn-edit-resident" data-id="${res.id}" data-name="${res.name}" data-phone="${res.phone || ''}" data-unit-id="${res.unitId || ''}" style="padding: 4px 8px;">
+                        <i data-lucide="edit" style="width: 16px;"></i>
+                    </button>
                     <button class="btn btn-outline btn-delete" data-id="${res.id}" style="padding: 4px 8px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
                         <i data-lucide="trash-2" style="width: 16px;"></i>
                     </button>
@@ -623,6 +762,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             tbody.appendChild(tr);
         });
         lucide.createIcons();
+
+        document.querySelectorAll('.btn-edit-resident').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const oldName = e.currentTarget.getAttribute('data-name') || '';
+                const oldPhone = e.currentTarget.getAttribute('data-phone') || '';
+                const oldUnitId = e.currentTarget.getAttribute('data-unit-id') || '';
+                await openEditResidentModal({ id, name: oldName, phone: oldPhone, unitId: oldUnitId });
+            });
+        });
+
+        document.querySelectorAll('.btn-open-vehicles').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const residentId = e.currentTarget.getAttribute('data-id');
+                const vehicleResidentSelect = document.getElementById('vehicle-resident-select');
+                if (!vehicleResidentSelect) return;
+                vehicleResidentSelect.value = residentId;
+                currentVehicleResidentId = residentId;
+                const addVehicleBtn = document.getElementById('btn-add-vehicle');
+                if (addVehicleBtn) addVehicleBtn.disabled = false;
+                await loadVehiclesByResident(residentId);
+            });
+        });
         
         document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', async (e) => {
@@ -630,6 +792,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if(confirm('Tem certeza que deseja remover este morador?')) {
                     e.currentTarget.innerHTML = '...';
                     await API.deleteResident(id);
+                    if (currentVehicleResidentId === id) {
+                        currentVehicleResidentId = '';
+                        currentVehicles = [];
+                    }
                     loadResidents();
                     loadDashboardStats();
                 }
@@ -666,7 +832,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         csvContent += "ID,Nome,Unidade/Bloco,Telefone,Veiculos\n";
         
         currentResidents.forEach(res => {
-            let row = `${res.id},"${res.name}","${res.unitDisplay}","${res.phone}","${res.vehicles}"`;
+            let row = `${res.id},"${res.name}","${res.unitDisplay}","${res.phone}","${res.vehiclesCount || 0}"`;
             csvContent += row + "\r\n";
         });
         
@@ -918,12 +1084,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = document.getElementById('res-name').value;
         const unitId = selectUnit.value;
         const phone = document.getElementById('res-phone').value;
-        const vehicles = document.getElementById('res-vehicles').value;
-
         if(!name || !unitId) return alert("Nome e Unidade são campos obrigatórios");
 
         btnSave.textContent = "Salvando...";
-        await API.addResident({ name, unitId, phone, vehicles });
+        await API.addResident({ name, unitId, phone });
         
         clearForm();
         modal.style.display = 'none';
@@ -1047,7 +1211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Populate Info
             document.getElementById('portal-welcome').textContent = `Olá, ${me.name.split(' ')[0]}!`;
-            document.getElementById('portal-unit').textContent = `${me.unitDisplay} | Veículos Cadastrados: ${me.vehicles}`;
+            document.getElementById('portal-unit').textContent = `${me.unitDisplay} | Veículos Cadastrados: ${me.vehiclesCount || 0}`;
 
             // Populate Notices
             document.getElementById('portal-notices').innerHTML = notices.map(n => `
@@ -1096,12 +1260,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-portal-open-call')?.addEventListener('click', async () => {
         const id = document.getElementById('sim-resident-select').value;
         if(!id) return alert("Selecione um morador no simulador primeiro.");
-        
-        const title = prompt("Descreva o problema para o Síndico:");
-        if(!title) return;
-        
-        const isUrgent = confirm("Este chamado é urgente?\n[OK] Sim - Urgente\n[Cancelar] Não - Normal");
-        const urgency = isUrgent ? "Alta" : "Normal";
+
+        const result = await openFormModal({
+            title: 'Abrir Chamado',
+            submitLabel: 'Enviar',
+            fields: [
+                { name: 'title', label: 'Descrição do problema', type: 'textarea', required: true },
+                { name: 'urgency', label: 'Urgência', type: 'select', value: 'Normal', options: [{ value: 'Normal', label: 'Normal' }, { value: 'Alta', label: 'Urgente' }] }
+            ]
+        });
+        if(!result?.title) return;
+        const title = result.title.trim();
+        const urgency = result.urgency || 'Normal';
         
         try {
             const me = await API.getResidentData(id);
@@ -1118,11 +1288,202 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    function validateVehicleData(vehicleData) {
+        const type = (vehicleData.type || '').toLowerCase();
+        if (!['carro', 'moto', 'autopropelido'].includes(type)) {
+            return 'Tipo inválido. Use Carro, Moto ou Autopropelido.';
+        }
+        if (!vehicleData.brandModel || !vehicleData.brandModel.trim()) {
+            return 'Marca e modelo são obrigatórios.';
+        }
+        const plateRequired = type === 'carro' || type === 'moto';
+        if (plateRequired && (!vehicleData.plate || !vehicleData.plate.trim())) {
+            return 'Placa é obrigatória para Carro ou Moto.';
+        }
+        return '';
+    }
+
+    async function populateVehicleResidentSelect(preferredId = '') {
+        const select = document.getElementById('vehicle-resident-select');
+        if (!select) return;
+        const previous = preferredId || select.value || '';
+        select.innerHTML = '<option value="">Selecione um morador...</option>' +
+            currentResidents.map(r => `<option value="${r.id}">${r.name} (${r.unitDisplay})</option>`).join('');
+        const hasPrevious = previous && currentResidents.some(r => r.id === previous);
+        select.value = hasPrevious ? previous : '';
+        currentVehicleResidentId = select.value;
+        const addVehicleBtn = document.getElementById('btn-add-vehicle');
+        if (addVehicleBtn) addVehicleBtn.disabled = !select.value;
+    }
+
+    function renderVehiclesTable(vehicles) {
+        const tbody = document.getElementById('vehicles-tbody');
+        if (!tbody) return;
+        if (!currentVehicleResidentId) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Selecione um morador para gerenciar os veículos.</td></tr>';
+            return;
+        }
+        if (!vehicles.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">Nenhum veículo cadastrado para este morador.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = vehicles.map(v => `
+            <tr>
+                <td>${v.type}</td>
+                <td>${v.brandModel}</td>
+                <td>${v.color || '-'}</td>
+                <td>${v.plate || '-'}</td>
+                <td>${v.tag || '-'}</td>
+                <td>
+                    <button class="btn btn-outline btn-edit-vehicle" data-id="${v.id}" style="padding:4px 8px;"><i data-lucide="edit" style="width:14px;"></i></button>
+                    <button class="btn btn-outline btn-del-vehicle" data-id="${v.id}" style="padding:4px 8px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                </td>
+            </tr>
+        `).join('');
+        lucide.createIcons();
+
+        document.querySelectorAll('.btn-edit-vehicle').forEach(btn => btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            const vehicle = currentVehicles.find(v => v.id === id);
+            if (!vehicle) return;
+            openVehicleModal('edit', vehicle);
+        }));
+
+        document.querySelectorAll('.btn-del-vehicle').forEach(btn => btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (!confirm('Deseja remover este veículo?')) return;
+            await API.deleteVehicle(id);
+            await loadVehiclesByResident(currentVehicleResidentId);
+            await loadResidents();
+        }));
+    }
+
+    async function loadVehiclesByResident(residentId) {
+        const tbody = document.getElementById('vehicles-tbody');
+        if (!tbody) return;
+        if (!residentId) {
+            currentVehicles = [];
+            renderVehiclesTable([]);
+            return;
+        }
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Carregando veículos...</td></tr>';
+        currentVehicles = await API.getVehiclesByResident(residentId);
+        renderVehiclesTable(currentVehicles);
+    }
+
+    document.getElementById('vehicle-resident-select')?.addEventListener('change', async (e) => {
+        currentVehicleResidentId = e.target.value || '';
+        const addVehicleBtn = document.getElementById('btn-add-vehicle');
+        if (addVehicleBtn) addVehicleBtn.disabled = !currentVehicleResidentId;
+        await loadVehiclesByResident(currentVehicleResidentId);
+    });
+
+    document.getElementById('btn-add-vehicle')?.addEventListener('click', async () => {
+        if (!currentVehicleResidentId) return alert('Selecione um morador.');
+        if (currentVehicles.length >= 3) return alert('Limite atingido: cada morador pode cadastrar até 3 veículos.');
+        openVehicleModal('create');
+    });
+
+    const editResidentModal = document.getElementById('edit-resident-modal');
+    const editResidentName = document.getElementById('edit-res-name');
+    const editResidentPhone = document.getElementById('edit-res-phone');
+    const editResidentUnit = document.getElementById('edit-res-unit-id');
+
+    async function openEditResidentModal(resident) {
+        editingResidentId = resident.id;
+        editResidentName.value = resident.name || '';
+        editResidentPhone.value = resident.phone || '';
+        editResidentUnit.innerHTML = '<option value="">Carregando...</option>';
+        editResidentModal.style.display = 'flex';
+
+        const units = await API.getUnits();
+        editResidentUnit.innerHTML = '<option value="">Selecione a Unidade associada...</option>' +
+            units.map(u => `<option value="${u.id}">${u.blockName} - ${u.number}</option>`).join('');
+        editResidentUnit.value = resident.unitId || '';
+    }
+
+    function closeEditResidentModal() {
+        editingResidentId = '';
+        editResidentModal.style.display = 'none';
+    }
+
+    document.getElementById('cancel-edit-resident')?.addEventListener('click', closeEditResidentModal);
+    editResidentModal?.addEventListener('click', (e) => {
+        if (e.target === editResidentModal) closeEditResidentModal();
+    });
+
+    document.getElementById('save-edit-resident')?.addEventListener('click', async () => {
+        if (!editingResidentId) return;
+        const name = editResidentName.value.trim();
+        const phone = editResidentPhone.value.trim();
+        const unitId = editResidentUnit.value;
+        if (!name || !unitId) return alert('Nome e Unidade são campos obrigatórios.');
+
+        await API.updateResident(editingResidentId, { name, phone, unitId });
+        closeEditResidentModal();
+        await loadResidents();
+        loadDashboardStats();
+    });
+
+    const vehicleModal = document.getElementById('vehicle-modal');
+    const vehicleModalTitle = document.getElementById('vehicle-modal-title');
+    const vehicleTypeInput = document.getElementById('vehicle-type');
+    const vehicleBrandModelInput = document.getElementById('vehicle-brand-model');
+    const vehicleColorInput = document.getElementById('vehicle-color');
+    const vehiclePlateInput = document.getElementById('vehicle-plate');
+    const vehicleTagInput = document.getElementById('vehicle-tag');
+
+    function openVehicleModal(mode = 'create', vehicle = null) {
+        editingVehicleId = mode === 'edit' && vehicle ? vehicle.id : '';
+        vehicleModalTitle.textContent = mode === 'edit' ? 'Editar Veículo' : 'Novo Veículo';
+        vehicleTypeInput.value = vehicle?.type || 'Carro';
+        vehicleBrandModelInput.value = vehicle?.brandModel || '';
+        vehicleColorInput.value = vehicle?.color || '';
+        vehiclePlateInput.value = vehicle?.plate || '';
+        vehicleTagInput.value = vehicle?.tag || '';
+        vehicleModal.style.display = 'flex';
+    }
+
+    function closeVehicleModal() {
+        editingVehicleId = '';
+        vehicleModal.style.display = 'none';
+    }
+
+    document.getElementById('cancel-vehicle-modal')?.addEventListener('click', closeVehicleModal);
+    vehicleModal?.addEventListener('click', (e) => {
+        if (e.target === vehicleModal) closeVehicleModal();
+    });
+
+    document.getElementById('save-vehicle-modal')?.addEventListener('click', async () => {
+        if (!currentVehicleResidentId) return alert('Selecione um morador.');
+        const payload = {
+            residentId: currentVehicleResidentId,
+            type: vehicleTypeInput.value.trim(),
+            brandModel: vehicleBrandModelInput.value.trim(),
+            color: vehicleColorInput.value.trim(),
+            plate: vehiclePlateInput.value.trim().toUpperCase(),
+            tag: vehicleTagInput.value.trim()
+        };
+        const validationError = validateVehicleData(payload);
+        if (validationError) return alert(validationError);
+
+        if (editingVehicleId) {
+            await API.updateVehicle(editingVehicleId, payload);
+        } else {
+            if (currentVehicles.length >= 3) return alert('Limite atingido: cada morador pode cadastrar até 3 veículos.');
+            await API.addVehicle(payload);
+        }
+
+        closeVehicleModal();
+        await loadVehiclesByResident(currentVehicleResidentId);
+        await loadResidents();
+    });
+
     function clearForm() {
         document.getElementById('res-name').value = '';
         selectUnit.value = '';
         document.getElementById('res-phone').value = '';
-        document.getElementById('res-vehicles').value = '';
     }
 
     // --- LOGOUT LOGIC ---
@@ -1135,21 +1496,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadUsers() {
         try {
             const users = await API.getUsers();
+            const displayUsers = users.filter(u => u.username !== 'admin');
             const tbody = document.getElementById('users-tbody');
             if (tbody) {
-                tbody.innerHTML = users.map(u => `
+                tbody.innerHTML = displayUsers.map(u => `
                     <tr>
                         <td><b>${u.name}</b></td>
                         <td><code>${u.username}</code></td>
-                        <td><span class="badge" style="background:rgba(139, 92, 246, 0.1); color:var(--primary);">${u.role}</span></td>
+                        <td><span style="display:inline-flex; align-items:center; border-radius:999px; padding:4px 10px; font-size:0.75rem; background:rgba(139, 92, 246, 0.1); color:var(--primary);">${u.role}</span></td>
                         <td style="font-size:0.8rem; color:var(--text-muted);">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}</td>
                         <td>
-                            <button class="btn btn-outline btn-del-user" data-id="${u.id}" style="color:var(--danger); ${u.username === 'admin' ? 'display:none;' : ''}"><i data-lucide="trash-2" style="width:14px;"></i></button>
+                            <button class="btn btn-outline btn-edit-user" data-id="${u.id}" data-name="${u.name}" data-username="${u.username}" data-role="${u.role || 'Operador'}" style="padding:4px 8px;"><i data-lucide="edit" style="width:14px;"></i></button>
+                            <button class="btn btn-outline btn-del-user" data-id="${u.id}" style="color:var(--danger);"><i data-lucide="trash-2" style="width:14px;"></i></button>
                         </td>
                     </tr>
                 `).join('');
                 
                 lucide.createIcons();
+                document.querySelectorAll('.btn-edit-user').forEach(btn => btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const oldName = e.currentTarget.getAttribute('data-name') || '';
+                    const oldUsername = e.currentTarget.getAttribute('data-username') || '';
+                    const oldRole = e.currentTarget.getAttribute('data-role') || 'Operador';
+                    const result = await openFormModal({
+                        title: 'Editar Usuário',
+                        submitLabel: 'Salvar',
+                        fields: [
+                            { name: 'name', label: 'Nome completo', type: 'text', value: oldName, required: true },
+                            { name: 'username', label: 'Usuário (login)', type: 'text', value: oldUsername, required: true },
+                            { name: 'role', label: 'Cargo', type: 'text', value: oldRole, required: true },
+                            { name: 'password', label: 'Nova senha (opcional)', type: 'password', value: '' }
+                        ]
+                    });
+                    if (!result) return;
+
+                    const payload = {
+                        name: result.name.trim(),
+                        username: result.username.trim().toLowerCase(),
+                        role: result.role.trim() || 'Operador'
+                    };
+                    if (result.password && result.password.trim()) payload.password = result.password.trim();
+
+                    await API.updateUserProfile(id, payload);
+                    loadUsers();
+                }));
                 document.querySelectorAll('.btn-del-user').forEach(btn => btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     if(confirm("Deseja remover este usuário?")) {
@@ -1167,15 +1557,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
     document.getElementById('btn-open-add-user')?.addEventListener('click', async () => {
-        const name = prompt("Nome completo do usuário:");
-        if(!name) return;
-        const username = prompt("Nome de usuário (login):");
-        if(!username) return;
-        const password = prompt("Senha:");
-        if(!password) return;
-        const role = prompt("Cargo (Ex: Admin, Porteiro, Zelador):", "Operador");
+        const result = await openFormModal({
+            title: 'Novo Usuário',
+            submitLabel: 'Criar',
+            fields: [
+                { name: 'name', label: 'Nome completo', type: 'text', required: true },
+                { name: 'username', label: 'Usuário (login)', type: 'text', required: true },
+                { name: 'password', label: 'Senha', type: 'password', required: true },
+                { name: 'role', label: 'Cargo', type: 'text', value: 'Operador', required: true }
+            ]
+        });
+        if(!result) return;
         
-        await API.addUser({ name, username, password, role });
+        await API.addUser({
+            name: result.name.trim(),
+            username: result.username.trim().toLowerCase(),
+            password: result.password,
+            role: result.role.trim() || 'Operador'
+        });
         loadUsers();
     });
 

@@ -4,6 +4,9 @@
   --bg-color: #0b0f19;
   --surface-color: #161d2e;
   --surface-border: rgba(255, 255, 255, 0.12);
+  --surface-soft: rgba(255, 255, 255, 0.05);
+  --surface-soft-2: rgba(255, 255, 255, 0.1);
+  --input-bg: rgba(0, 0, 0, 0.2);
   --primary: #8b5cf6;
   --primary-hover: #7c3aed;
   --secondary: #06b6d4;
@@ -15,6 +18,17 @@
   --sidebar-width: 260px;
   --header-height: 80px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body[data-theme="light"] {
+  --bg-color: #f4f7fb;
+  --surface-color: #ffffff;
+  --surface-border: rgba(15, 23, 42, 0.12);
+  --surface-soft: rgba(15, 23, 42, 0.04);
+  --surface-soft-2: rgba(15, 23, 42, 0.08);
+  --input-bg: rgba(248, 250, 252, 0.95);
+  --text-main: #0f172a;
+  --text-muted: #475569;
 }
 
 * {
@@ -82,10 +96,10 @@ body.auth-locked .auth-overlay {
 .form-group input {
     width: 100%;
     padding: 12px 16px !important;
-    background: rgba(0,0,0,0.2) !important;
+    background: var(--input-bg) !important;
     border: 1px solid var(--surface-border) !important;
     border-radius: 10px !important;
-    color: white !important;
+    color: var(--text-main) !important;
 }
 
 .btn-login {
@@ -171,7 +185,7 @@ body.auth-locked .auth-overlay {
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-soft);
   color: var(--text-main);
   transform: translateX(5px);
 }
@@ -207,7 +221,7 @@ body.auth-locked .auth-overlay {
 .search-bar {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-soft);
   border: 1px solid var(--surface-border);
   padding: 8px 16px;
   border-radius: 20px;
@@ -248,12 +262,12 @@ body.auth-locked .auth-overlay {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
   transition: var(--transition);
 }
 
 .notifications:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--surface-soft-2);
   transform: scale(1.05);
 }
 
@@ -268,7 +282,7 @@ body.auth-locked .auth-overlay {
 }
 
 .user-profile:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
 }
 
 .admin-name {
@@ -330,7 +344,7 @@ body.auth-locked .auth-overlay {
 
 .stat-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(255,255,255,0.2);
+  border-color: var(--surface-border);
 }
 
 .stat-card::before {
@@ -361,7 +375,7 @@ body.auth-locked .auth-overlay {
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-soft);
 }
 
 .stat-card.purple .stat-icon { color: var(--primary); }
@@ -428,7 +442,7 @@ body.auth-locked .auth-overlay {
   color: var(--text-main);
 }
 .btn-outline:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
   box-shadow: none;
 }
 
@@ -457,7 +471,7 @@ tr {
 }
 
 tbody tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-soft);
 }
 
 .status-badge {
@@ -480,13 +494,13 @@ tbody tr:hover {
 .notice-item {
   padding: 1rem;
   border-radius: 12px;
-  background: rgba(255,255,255,0.06);
+  background: var(--surface-soft);
   border: 1px solid var(--surface-border);
   transition: var(--transition);
 }
 
 .notice-item:hover {
-  border-color: rgba(255,255,255,0.1);
+  border-color: var(--surface-border);
   transform: translateX(4px);
 }
 
@@ -523,9 +537,9 @@ tbody tr:hover {
 
 /* Responsiveness & Mobile UI */
 .btn-icon {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
   border: 1px solid var(--surface-border);
-  color: white;
+  color: var(--text-main);
   width: 40px;
   height: 40px;
   border-radius: 10px;
@@ -537,7 +551,11 @@ tbody tr:hover {
 }
 
 .btn-icon:hover {
-  background: rgba(255,255,255,0.1);
+  background: var(--surface-soft-2);
+}
+
+.theme-toggle {
+  display: inline-flex;
 }
 
 @media (max-width: 1024px) {
@@ -617,7 +635,7 @@ input, select, textarea {
   padding: 12px 16px;
   border-radius: 10px;
   border: 1px solid var(--surface-border);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--input-bg);
   color: var(--text-main);
   font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
@@ -627,7 +645,7 @@ input, select, textarea {
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-soft);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
@@ -701,7 +719,7 @@ select option {
 }
 
 .notif-item:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
 }
 
 .notif-icon {
@@ -742,7 +760,7 @@ select option {
 }
 
 .profile-link:hover {
-  background: rgba(255,255,255,0.05);
+  background: var(--surface-soft);
   color: var(--text-main);
   transform: translateX(5px);
 }
