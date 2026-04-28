@@ -366,7 +366,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('stat-occupancy').textContent = stats.occupancy;
             document.getElementById('stat-residents').textContent = stats.activeResidents;
             document.getElementById('stat-opencalls').textContent = stats.openCalls;
-            document.getElementById('stat-notices-count').textContent = stats.noticesCount;
+
             const packagesBadge = document.getElementById('packages-summary-badge');
             if (packagesBadge) packagesBadge.textContent = `${stats.pendingParcels || 0} aguardando retirada`;
 

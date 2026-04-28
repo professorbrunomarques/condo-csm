@@ -69,7 +69,7 @@
             <li><a href="#" class="nav-item" data-target="users">
                     <i data-lucide="shield-plus"></i> Usuários
                 </a></li>
-            <li style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <li style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--surface-border);">
                 <a href="#" class="nav-item" data-target="portal" style="color: var(--primary-light);">
                     <i data-lucide="user-circle"></i> Portal do Morador
                 </a>
@@ -178,14 +178,7 @@
                         <span style="font-size: 0.8rem; color: var(--warning);">Precisam de atenção urgente</span>
                     </div>
 
-                    <div class="stat-card glass green">
-                        <div class="stat-header">
-                            <span class="stat-label">Comunicados</span>
-                            <div class="stat-icon"><i data-lucide="megaphone"></i></div>
-                        </div>
-                        <div class="stat-value" id="stat-notices-count">...</div>
-                        <span style="font-size: 0.8rem; color: var(--success);">Informativos ativos</span>
-                    </div>
+
                 </div>
 
                 <div class="dashboard-sections">
@@ -272,7 +265,7 @@
                                     style="padding: 6px 12px; font-size: 0.85rem; background: var(--danger); display: none;"><i data-lucide="trash-2"
                                         style="width:14px;"></i> Remover (<span id="selected-units-count">0</span>)</button>
                                 <input type="text" id="unit-search-input" placeholder="Filtrar Bloco ou Nº..."
-                                    style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.05); color: white; width: 200px; font-size:0.85rem;">
+                                    style="padding: 6px 12px; width: 200px; font-size:0.85rem;">
                                 <button class="btn btn-outline" id="btn-add-unit"
                                     style="padding: 6px 12px; font-size: 0.85rem;"><i data-lucide="plus"
                                         style="width:14px;"></i> Unidade</button>
@@ -322,7 +315,7 @@
                 <div class="section-card glass">
                     <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
                         <input type="text" id="resident-search-input" placeholder="Filtrar por nome ou unidade..."
-                            style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--surface-border); background: rgba(255,255,255,0.05); color: white; width: 300px;">
+                            style="padding: 8px 12px; width: 300px;">
                     </div>
                     <table>
                         <thead>
@@ -449,7 +442,7 @@
                             </div>
                             <div style="grid-column: span 2;">
                                 <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Observacoes</label>
-                                <textarea id="package-notes" rows="3" placeholder="Descreva o pacote, tamanho, condicao ou recados..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--surface-border); background:rgba(255,255,255,0.05); color:white; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+                                <textarea id="package-notes" rows="3" placeholder="Descreva o pacote, tamanho, condicao ou recados..." style="resize:vertical;"></textarea>
                             </div>
                             <div style="grid-column: span 2;">
                                 <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Foto da encomenda</label>
@@ -692,7 +685,7 @@
                     <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
                         <label style="font-size: 12px; color: var(--text-muted);">Simulador de Login:</label>
                         <select id="sim-resident-select"
-                            style="padding: 8px; border-radius: 6px; border: 1px solid var(--primary-color); background: rgba(0,0,0,0.3); color: white;">
+                            style="padding: 8px; border-radius: 6px; border: 1px solid var(--primary); background: var(--input-bg); color: var(--text-main);">
                             <option value="">Entrar como morador...</option>
                         </select>
                     </div>
@@ -842,7 +835,7 @@
             <div>
                 <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:5px;">Mensagem</label>
                 <textarea id="notice-content" rows="4" placeholder="Descreva o aviso para os moradores..."
-                    style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--surface-border); background:rgba(255,255,255,0.05); color:white; resize:vertical; font-family:inherit; box-sizing:border-box;"></textarea>
+                    style="resize:vertical;"></textarea>
             </div>
             <div>
                 <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">Tipo do Aviso</label>

@@ -326,7 +326,7 @@ const firebaseConfig = {
               activeResidents: residents.length,
               occupancy: `${occupied} Unidades`,
               openCalls: openCalls,
-              noticesCount: residents.length > 0 ? 12 : 0, // Exemplo de contagem
+
               pendingParcels
           };
       },
