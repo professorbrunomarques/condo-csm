@@ -7,7 +7,7 @@ if (typeof lucide !== 'undefined') {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("🚀 Aplicativo iniciando...");
-    
+
     // --- THEME TOGGLE (LIGHT / DARK) ---
     const THEME_KEY = 'condo_theme';
     const themeToggleBtn = document.getElementById('theme-toggle');
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         localStorage.setItem(THEME_KEY, currentTheme);
         applyTheme(currentTheme);
     });
-    
+
     // --- AUTH GUARD ---
     const API = window.BackendAPI;
     if (!API) {
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         document.body.classList.remove('auth-locked');
         document.getElementById('login-overlay').style.display = 'none';
-        
+
         // Preencher nome no header
         const adminNameEl = document.querySelector('.admin-name');
         if (adminNameEl) adminNameEl.textContent = user.name;
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const pField = document.getElementById('login-pass');
         const btn = document.getElementById('btn-login-submit');
         const error = document.getElementById('login-error');
-        
+
         const u = uField.value.trim();
         const p = pField.value.trim();
 
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Processando login...");
         btn.textContent = "Verificando...";
         btn.disabled = true;
-        
+
         try {
             const authenticated = await API.login(u, p);
             if (authenticated) {
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            
+
             // If it's a profile link, close any open dropdown
             if (item.classList.contains('profile-link')) {
                 document.querySelectorAll('.dropdown-menu').forEach(dm => dm.classList.remove('active'));
@@ -177,13 +177,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 view.classList.remove('active');
                 if (view.id === targetId) {
                     view.classList.add('active');
-                    if(targetId === 'residents') loadResidents();
-                    if(targetId === 'dashboard') loadDashboardStats();
-                    if(targetId === 'maintenance') loadMaintenance();
-                    if(targetId === 'packages') loadPackages();
-                    if(targetId === 'org') loadOrg();
-                    if(targetId === 'portal') loadPortalSim();
-                    if(targetId === 'users') loadUsers();
+                    if (targetId === 'residents') loadResidents();
+                    if (targetId === 'dashboard') loadDashboardStats();
+                    if (targetId === 'maintenance') loadMaintenance();
+                    if (targetId === 'packages') loadPackages();
+                    if (targetId === 'org') loadOrg();
+                    if (targetId === 'portal') loadPortalSim();
+                    if (targetId === 'users') loadUsers();
                 }
             });
 
@@ -373,7 +373,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Load Admin Notices
             const notices = await API.getNotices();
             const noticesList = document.getElementById('admin-notices-list');
-            if(noticesList) {
+            if (noticesList) {
                 noticesList.innerHTML = notices.map(n => `
                     <div class="notice-item" style="display:flex; justify-content:space-between; align-items:center; border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
                         <div>
@@ -388,23 +388,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 lucide.createIcons();
                 document.querySelectorAll('.btn-del-notice').forEach(btn => btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
-                    if(confirm("Excluir este aviso? Ele sumirá dos portais de todos os moradores.")) {
+                    if (confirm("Excluir este aviso? Ele sumirá dos portais de todos os moradores.")) {
                         await API.deleteNotice(id);
                         loadDashboardStats();
                     }
                 }));
-            }
-
-            // Popular Mural de Avisos (card lateral do dashboard)
-            const muralList = document.getElementById('dashboard-mural-notices');
-            if (muralList) {
-                muralList.innerHTML = notices.map(n => `
-                    <div class="notice-item" style="border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
-                        <div class="notice-date">${n.date}</div>
-                        <div class="notice-title">${n.title}</div>
-                        <div class="notice-desc">${n.content}</div>
-                    </div>
-                `).join('') || `<p style="color:var(--text-muted); font-size:0.85rem;">Nenhum aviso publicado ainda.</p>`;
             }
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
@@ -486,14 +474,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadOrg() {
         const blocksBody = document.getElementById('blocks-tbody');
         const unitsBody = document.getElementById('units-tbody');
-        
+
         blocksBody.innerHTML = '<tr><td colspan="2">Carregando...</td></tr>';
         unitsBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
-        
+
         try {
             const blocks = await API.getBlocks();
             currentUnits = await API.getUnits();
-            
+
             blocksBody.innerHTML = blocks.map(b => `
                 <tr>
                     <td>${b.name}</td>
@@ -504,7 +492,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </td>
                 </tr>
             `).join('') || `<tr><td colspan="2">Sem blocos</td></tr>`;
-            
+
             renderUnits(currentUnits);
             lucide.createIcons();
 
@@ -534,7 +522,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const id = e.currentTarget.getAttribute('data-id');
                 btn.innerHTML = `<span style="font-size:10px;">...</span>`;
                 const result = await API.generateUnitsForBlock(id);
-                if(!result.success) {
+                if (!result.success) {
                     alert(result.message);
                 } else {
                     alert(`Sucesso! ${result.count} novas unidades foram erguidas no servidor para este bloco.`);
@@ -542,7 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadOrg(); loadDashboardStats();
             }));
 
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         }
     }
@@ -578,7 +566,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </td>
             </tr>
         `).join('') || `<tr><td colspan="4">Nenhuma unidade compatível</td></tr>`;
-        
+
         lucide.createIcons();
 
         // Checkbox selection handlers
@@ -681,8 +669,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Units Filter
     document.getElementById('unit-search-input')?.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const filtered = currentUnits.filter(u => 
-            String(u.number).toLowerCase().includes(term) || 
+        const filtered = currentUnits.filter(u =>
+            String(u.number).toLowerCase().includes(term) ||
             String(u.blockName).toLowerCase().includes(term)
         );
         renderUnits(filtered);
@@ -695,7 +683,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             fields: [{ name: 'name', label: 'Nome do Bloco', type: 'text', placeholder: 'Ex: Bloco C', required: true }]
         });
         const name = result?.name?.trim();
-        if(name) {
+        if (name) {
             await API.addBlock(name);
             loadOrg();
             loadDashboardStats();
@@ -704,7 +692,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('btn-add-unit')?.addEventListener('click', async () => {
         const blocks = await API.getBlocks();
-        if(blocks.length === 0) return alert("Crie um bloco primeiro!");
+        if (blocks.length === 0) return alert("Crie um bloco primeiro!");
 
         const result = await openFormModal({
             title: 'Nova Unidade',
@@ -714,7 +702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { name: 'number', label: 'Número da Unidade', type: 'text', placeholder: 'Ex: 405', required: true }
             ]
         });
-        if(result?.blockId && result?.number) {
+        if (result?.blockId && result?.number) {
             await API.addUnit(result.blockId, result.number);
             loadOrg();
             loadDashboardStats();
@@ -725,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadResidents() {
         const tbody = document.getElementById('residents-tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Carregando residentes...</td></tr>';
-        
+
         try {
             currentResidents = await API.getResidents();
             renderResidents(currentResidents);
@@ -744,7 +732,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderResidents(residentsArray) {
         const tbody = document.getElementById('residents-tbody');
         tbody.innerHTML = '';
-        
+
         if (residentsArray.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Nenhum morador encontrado.</td></tr>';
             return;
@@ -795,11 +783,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 await loadVehiclesByResident(residentId);
             });
         });
-        
+
         document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.currentTarget.getAttribute('data-id');
-                if(confirm('Tem certeza que deseja remover este morador?')) {
+                if (confirm('Tem certeza que deseja remover este morador?')) {
                     e.currentTarget.innerHTML = '...';
                     await API.deleteResident(id);
                     if (currentVehicleResidentId === id) {
@@ -816,11 +804,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- SEARCH / FILTERS LOGIC ---
     function handleSearch(e) {
         const term = e.target.value.toLowerCase();
-        const filtered = currentResidents.filter(r => 
-            r.name.toLowerCase().includes(term) || 
+        const filtered = currentResidents.filter(r =>
+            r.name.toLowerCase().includes(term) ||
             r.unitDisplay.toLowerCase().includes(term)
         );
-        
+
         // Se a busca for global e aba não for moradores, navegar pra moradores
         if (e.target.id === 'global-search-input' && term.length > 0) {
             const residentsNav = Array.from(navItems).find(n => n.getAttribute('data-target') === 'residents');
@@ -830,22 +818,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         renderResidents(filtered);
     }
-    
+
     document.getElementById('global-search-input')?.addEventListener('input', handleSearch);
     document.getElementById('resident-search-input')?.addEventListener('input', handleSearch);
 
     // --- EXPORT TO CSV LOGIC --- //
     document.getElementById('btn-export-residents')?.addEventListener('click', () => {
-        if(currentResidents.length === 0) return alert('Não há moradores para exportar.');
-        
+        if (currentResidents.length === 0) return alert('Não há moradores para exportar.');
+
         let csvContent = "data:text/csv;charset=utf-8,";
         csvContent += "ID,Nome,Unidade/Bloco,Telefone,Veiculos\n";
-        
+
         currentResidents.forEach(res => {
             let row = `${res.id},"${res.name}","${res.unitDisplay}","${res.phone}","${res.vehiclesCount || 0}"`;
             csvContent += row + "\r\n";
         });
-        
+
         var encodedUri = encodeURI(csvContent);
         var link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -857,7 +845,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- SETTINGS / DANGER ZONE LOGIC --- //
     document.getElementById('btn-reset-db')?.addEventListener('click', () => {
-        if(confirm('Você está prestes a apagar TODOS os seus dados salvos localmente. Tem certeza ABSOLUTA disso?')) {
+        if (confirm('Você está prestes a apagar TODOS os seus dados salvos localmente. Tem certeza ABSOLUTA disso?')) {
             localStorage.removeItem('condo_cms_db_v2'); // Hardcoded API constant
             alert('Banco de dados excluído. A aplicação será recarregada.');
             window.location.reload();
@@ -869,7 +857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const maintOpen = document.getElementById('maint-open');
         const maintProgress = document.getElementById('maint-progress');
         const maintDone = document.getElementById('maint-done');
-        
+
         maintOpen.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
         maintProgress.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
         maintDone.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
@@ -881,15 +869,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             calls.forEach(call => {
                 let controls = '';
-                if(call.status === 'open') {
+                if (call.status === 'open') {
                     controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-right-circle" style="width: 16px;"></i></button>`;
-                } else if(call.status === 'progress') {
+                } else if (call.status === 'progress') {
                     controls = `
                     <div style="display:flex; gap: 8px;">
                         <button class="btn-move" data-id="${call.id}" data-to="open" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-left-circle" style="width: 16px;"></i></button>
                         <button class="btn-move" data-id="${call.id}" data-to="done" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="check-circle" style="width: 16px;"></i></button>
                     </div>`;
-                } else if(call.status === 'done') {
+                } else if (call.status === 'done') {
                     controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="corner-down-left" style="width: 16px;"></i></button>`;
                 }
 
@@ -902,9 +890,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <div>${controls}</div>
                     </div>
                 `;
-                if(call.status === 'open') { htmlOpen += itemHtml; countOpen++; }
-                if(call.status === 'progress') { htmlProgress += itemHtml; countProgress++; }
-                if(call.status === 'done') { htmlDone += itemHtml; countDone++; }
+                if (call.status === 'open') { htmlOpen += itemHtml; countOpen++; }
+                if (call.status === 'progress') { htmlProgress += itemHtml; countProgress++; }
+                if (call.status === 'done') { htmlDone += itemHtml; countDone++; }
             });
 
             maintOpen.innerHTML = htmlOpen || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
@@ -918,9 +906,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const iconElements = maintOpen.querySelectorAll('[data-lucide]');
             const progressIcons = maintProgress.querySelectorAll('[data-lucide]');
             const doneIcons = maintDone.querySelectorAll('[data-lucide]');
-            
-            [...iconElements, ...progressIcons, ...doneIcons].forEach(el => lucide.createIcons({name: el.getAttribute('data-lucide')}));
-            lucide.createIcons(); 
+
+            [...iconElements, ...progressIcons, ...doneIcons].forEach(el => lucide.createIcons({ name: el.getAttribute('data-lucide') }));
+            lucide.createIcons();
 
             document.querySelectorAll('.btn-move').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
@@ -1075,12 +1063,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnOpenModal.addEventListener('click', async () => {
         selectUnit.innerHTML = '<option value="">Carregando...</option>';
         modal.style.display = 'flex';
-        
+
         try {
             const units = await API.getUnits();
-            selectUnit.innerHTML = '<option value="">Selecione a Unidade associada...</option>' + 
+            selectUnit.innerHTML = '<option value="">Selecione a Unidade associada...</option>' +
                 units.map(u => `<option value="${u.id}">${u.blockName} - ${u.number}</option>`).join('');
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         }
     });
@@ -1094,15 +1082,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = document.getElementById('res-name').value;
         const unitId = selectUnit.value;
         const phone = document.getElementById('res-phone').value;
-        if(!name || !unitId) return alert("Nome e Unidade são campos obrigatórios");
+        if (!name || !unitId) return alert("Nome e Unidade são campos obrigatórios");
 
         btnSave.textContent = "Salvando...";
         await API.addResident({ name, unitId, phone });
-        
+
         clearForm();
         modal.style.display = 'none';
         btnSave.textContent = "Salvar";
-        
+
         loadResidents();
         loadDashboardStats();
     });
@@ -1188,14 +1176,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await API.getResidents();
             const currentValue = select.value;
-            if(forceReload || select.options.length <= 1) { // Só carregar se tiver vazio
-                select.innerHTML = '<option value="">Entrar como morador...</option>' + 
-                res.map(r => `<option value="${r.id}">${r.name} (${r.unitDisplay})</option>`).join('');
+            if (forceReload || select.options.length <= 1) { // Só carregar se tiver vazio
+                select.innerHTML = '<option value="">Entrar como morador...</option>' +
+                    res.map(r => `<option value="${r.id}">${r.name} (${r.unitDisplay})</option>`).join('');
                 if (currentValue && res.some(r => r.id === currentValue)) {
                     select.value = currentValue;
                 }
             }
-        } catch(e) {}
+        } catch (e) { }
     }
 
     document.getElementById('sim-resident-select')?.addEventListener('change', async (e) => {
@@ -1203,7 +1191,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const portalLocked = document.getElementById('portal-locked');
         const id = e.target.value;
 
-        if(!id) {
+        if (!id) {
             portalContent.style.display = 'none';
             portalLocked.style.display = 'block';
             return;
@@ -1214,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const notices = await API.getNotices();
             const maint = await API.getMaintenance();
             const parcels = await API.getResidentParcels(id);
-            
+
             // Switch UI
             portalLocked.style.display = 'none';
             portalContent.style.display = 'block';
@@ -1228,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="notice-item" style="border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
                     <span style="font-size: 0.75rem; color: var(--text-muted);">${n.date}</span>
                     <div class="notice-title" style="margin-top:4px; font-size:1.05rem;">${n.title}</div>
-                    <div style="font-size:0.9rem; color: #ddd; margin-top:5px;">${n.content}</div>
+                    <div style="font-size:0.9rem; color: var(--text-muted); margin-top:5px;">${n.content}</div>
                 </div>
             `).join('') || `<p style="color:var(--text-muted)">Sem novos comunicados.</p>`;
 
@@ -1236,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Para simplicidade didática do mock, se a localização do chamado contiver o "id" ou o nome do apto, é dele.
             const myCalls = maint.filter(m => m.location.includes(me.unitDisplay) || m.location === String(me.id));
             document.getElementById('portal-my-calls').innerHTML = myCalls.map(c => `
-                <div class="notice-item" style="border-left-color: ${c.status==='done'?'var(--success)':c.status==='progress'?'var(--warning)':'var(--text-muted)'}; padding: 10px;">
+                <div class="notice-item" style="border-left-color: ${c.status === 'done' ? 'var(--success)' : c.status === 'progress' ? 'var(--warning)' : 'var(--text-muted)'}; padding: 10px;">
                     <div style="display:flex; justify-content:space-between;">
                         <b style="font-size:0.85rem">${c.title}</b>
                         <span class="badge" style="background:transparent; border:1px solid #555;">${c.status}</span>
@@ -1262,14 +1250,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `).join('') || `<p style="font-size:0.85rem; color:#888;">Nenhuma encomenda vinculada no momento.</p>`;
 
-        } catch(e) {
+        } catch (e) {
             console.error(e);
         }
     });
 
     document.getElementById('btn-portal-open-call')?.addEventListener('click', async () => {
         const id = document.getElementById('sim-resident-select').value;
-        if(!id) return alert("Selecione um morador no simulador primeiro.");
+        if (!id) return alert("Selecione um morador no simulador primeiro.");
 
         const result = await openFormModal({
             title: 'Abrir Chamado',
@@ -1279,10 +1267,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { name: 'urgency', label: 'Urgência', type: 'select', value: 'Normal', options: [{ value: 'Normal', label: 'Normal' }, { value: 'Alta', label: 'Urgente' }] }
             ]
         });
-        if(!result?.title) return;
+        if (!result?.title) return;
         const title = result.title.trim();
         const urgency = result.urgency || 'Normal';
-        
+
         try {
             const me = await API.getResidentData(id);
             // Assinatura correta: addMaintenance(title, urgency, desc, location)
@@ -1292,7 +1280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('sim-resident-select').dispatchEvent(new Event('change'));
             loadDashboardStats();
             loadMaintenance();
-        } catch(err) {
+        } catch (err) {
             console.error("Erro ao abrir chamado:", err);
             alert("Erro ao registrar chamado. Tente novamente.");
         }
@@ -1521,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </td>
                     </tr>
                 `).join('');
-                
+
                 lucide.createIcons();
                 document.querySelectorAll('.btn-edit-user').forEach(btn => btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -1552,7 +1540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }));
                 document.querySelectorAll('.btn-del-user').forEach(btn => btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
-                    if(confirm("Deseja remover este usuário?")) {
+                    if (confirm("Deseja remover este usuário?")) {
                         await API.deleteUser(id);
                         loadUsers();
                     }
@@ -1577,8 +1565,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { name: 'role', label: 'Cargo', type: 'select', value: 'Operador', required: true, options: USER_ROLE_OPTIONS }
             ]
         });
-        if(!result) return;
-        
+        if (!result) return;
+
         await API.addUser({
             name: result.name.trim(),
             username: result.username.trim().toLowerCase(),
@@ -1604,9 +1592,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.disabled = true;
 
         try {
-            await API.updateUserProfile(sessionUser.id, { 
-                name: newName, 
-                username: newUsername.toLowerCase() 
+            await API.updateUserProfile(sessionUser.id, {
+                name: newName,
+                username: newUsername.toLowerCase()
             });
 
             // Atualizar nome no header
@@ -1777,12 +1765,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     markReadBtn?.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const notices = await API.getNotices();
         const maintenance = await API.getMaintenance();
         const parcels = await API.getParcels();
         const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
-        
+
         const currentIds = [
             ...notices.map(n => `notice_${n.id}`),
             ...maintenance.map(m => `maint_${m.id}`),
@@ -1800,7 +1788,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (item) {
             const target = item.getAttribute('data-target');
             const id = item.getAttribute('data-id');
-            
+
             // Mark as read
             const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
             readIds.push(id);
@@ -1827,7 +1815,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function loadSettings() {
         try {
             const settings = await API.getSettings();
-            
+
             // Populate inputs
             const nameInput = document.getElementById('settings-condo-name');
             const cnpjInput = document.getElementById('settings-condo-cnpj');
@@ -1838,7 +1826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (cnpjInput) cnpjInput.value = settings.cnpj;
             if (cityInput) cityInput.value = settings.city;
             if (sidebarName) sidebarName.textContent = settings.name;
-            
+
             console.log("Configurações do condomínio carregadas.");
         } catch (error) {
             console.error("Erro ao carregar configurações:", error);
@@ -1848,7 +1836,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-save-settings')?.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         const originalText = btn.textContent;
-        
+
         const name = document.getElementById('settings-condo-name').value;
         const cnpj = document.getElementById('settings-condo-cnpj').value;
         const city = document.getElementById('settings-condo-city').value;
@@ -1860,11 +1848,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             await API.saveSettings({ name, cnpj, city });
-            
+
             // Success feedback
             btn.textContent = "Salvo com Sucesso!";
             btn.style.background = "var(--success)";
-            
+
             // Update sidebar immediately
             const sidebarName = document.getElementById('sidebar-condo-name');
             if (sidebarName) sidebarName.textContent = name;

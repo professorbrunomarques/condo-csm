@@ -1,207 +1,425 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sua Unidade - Painel</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, var(--bg-color), #0f172a);
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Portal do Morador</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: Inter, sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: "#f5f3ff",
+              100: "#ede9fe",
+              500: "#7c3aed",
+              600: "#6d28d9"
+            }
+          }
         }
-        .login-box {
-            width: 100%;
-            max-width: 400px;
-            padding: 2rem;
-            background: rgba(30, 41, 59, 0.7);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--surface-border);
-            text-align: center;
-        }
-        .login-box input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0 20px;
-            border-radius: 8px;
-            border: 1px solid var(--surface-border);
-            background: rgba(255,255,255,0.05);
-            color: white;
-            box-sizing: border-box;
-        }
-        /* App View layout simplificado para celular */
-        .app-view {
-            display: none;
-            width: 100%;
-            max-width: 600px;
-            height: 100vh;
-            flex-direction: column;
-            background: var(--bg-color);
-            border-left: 1px solid var(--surface-border);
-            border-right: 1px solid var(--surface-border);
-        }
-    </style>
+      }
+    };
+  </script>
 </head>
-<body>
-
-    <!-- TELA DE LOGIN DO MORADOR -->
-    <div id="login-screen" class="login-box">
-        <i data-lucide="building" style="width: 48px; height: 48px; color: var(--primary-light); margin-bottom: 1rem;"></i>
-        <h2 style="margin-bottom: 0.5rem; color: white;">Portal do Morador</h2>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem;">Acesso rápido da sua Unidade.</p>
-
-        <div style="text-align: left;">
-            <label style="font-size: 0.85rem; color: var(--text-muted);">Qual o seu Telefone cadastrado?</label>
-            <input type="text" id="login-phone" placeholder="Ex: (11) 98765-4321">
-            <p id="login-error" style="color: var(--danger); font-size: 0.8rem; margin-top: -10px; margin-bottom: 15px; display: none;">Cadastro não encontrado.</p>
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-dvh">
+  <!-- Login -->
+  <section id="login-screen" class="min-h-dvh grid place-items-center p-4">
+    <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-brand-500 to-cyan-500 text-white grid place-items-center text-2xl font-extrabold">C</div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight">Portal do Morador</h1>
+          <p id="condo-name-login" class="text-xs text-slate-500 dark:text-slate-400">CondoManager</p>
         </div>
-
-        <button id="btn-login" class="btn" style="width: 100%; justify-content: center; padding: 12px; margin-bottom: 1rem;">Entrar na Conta</button>
-        
-        <a href="painel.html" style="font-size: 0.75rem; color: var(--text-muted); text-decoration: none;">Acesso da Administração &rarr;</a>
+      </div>
+      <label class="text-sm text-slate-600 dark:text-slate-300">Telefone cadastrado</label>
+      <input id="login-phone" type="text" placeholder="Ex: (11) 98765-4321"
+             class="mt-2 w-full rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:border-brand-500 focus:ring-brand-500"/>
+      <p id="login-error" class="hidden mt-2 text-xs font-medium text-red-600">Cadastro não encontrado.</p>
+      <button id="btn-login"
+              class="mt-4 w-full rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold py-3 transition">
+        Entrar
+      </button>
     </div>
+  </section>
 
-    <!-- PAINEL DO APP (Mobile-Like) -->
-    <div id="app-screen" class="app-view">
-        <div style="padding: 1.5rem; background: rgba(30,41,59,0.8); border-bottom: 1px solid var(--surface-border); display: flex; justify-content: space-between; align-items: center;">
+  <!-- App -->
+  <div id="app-screen" class="hidden h-dvh overflow-hidden">
+    <div class="h-full grid grid-cols-1 lg:grid-cols-[260px_1fr]">
+      <!-- Sidebar -->
+      <aside class="hidden lg:flex flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 gap-4">
+        <div class="flex items-center gap-3 px-1">
+          <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-brand-500 to-cyan-500 text-white grid place-items-center text-2xl font-extrabold">C</div>
+          <div>
+            <p id="condo-name-sidebar" class="text-2xl leading-6 font-black tracking-tight text-brand-600">CondoManager</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Portal do Morador</p>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">Avisos</p>
+            <p id="stat-notices" class="text-2xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">Chamados Abertos</p>
+            <p id="stat-calls-open" class="text-2xl font-bold">0</p>
+          </div>
+          <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">Encomendas Pendentes</p>
+            <p id="stat-packages-pending" class="text-2xl font-bold">0</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="min-w-0 min-h-0 flex flex-col">
+        <header class="h-16 shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur px-4 lg:px-6 flex items-center justify-between">
+          <div>
+            <h2 id="morador-name" class="font-bold text-lg leading-5">Olá</h2>
+            <p id="morador-unit" class="text-xs text-slate-500 dark:text-slate-400">Unidade</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="theme-toggle" class="h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <span class="material-symbols-outlined" id="theme-icon">dark_mode</span>
+            </button>
+            <button id="btn-logout" class="h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <span class="material-symbols-outlined">logout</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="lg:hidden px-4 pt-3 grid grid-cols-3 gap-2 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div class="rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+            <p class="text-[10px] text-slate-500">Avisos</p><p id="stat-notices-mobile" class="font-bold">0</p>
+          </div>
+          <div class="rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+            <p class="text-[10px] text-slate-500">Chamados</p><p id="stat-calls-open-mobile" class="font-bold">0</p>
+          </div>
+          <div class="rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+            <p class="text-[10px] text-slate-500">Encomendas</p><p id="stat-packages-pending-mobile" class="font-bold">0</p>
+          </div>
+        </section>
+
+        <div class="min-h-0 flex-1 overflow-auto p-4 lg:p-6">
+          <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 lg:p-4">
+            <div class="inline-flex gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-1">
+              <button class="tab-btn px-3 py-2 text-sm rounded-lg bg-brand-600 text-white" data-tab="notices">
+                <span class="material-symbols-outlined mr-1 text-base">campaign</span>Avisos
+              </button>
+              <button class="tab-btn px-3 py-2 text-sm rounded-lg text-slate-600 dark:text-slate-300" data-tab="calls">
+                <span class="material-symbols-outlined mr-1 text-base">build</span>Manutenções
+              </button>
+              <button class="tab-btn px-3 py-2 text-sm rounded-lg text-slate-600 dark:text-slate-300" data-tab="packages">
+                <span class="material-symbols-outlined mr-1 text-base">package_2</span>Encomendas
+              </button>
+            </div>
+
+            <div id="tab-notices" class="tab-pane mt-4">
+              <div id="morador-notices" class="space-y-3"></div>
+            </div>
+
+            <div id="tab-calls" class="tab-pane mt-4 hidden">
+              <div id="morador-calls" class="space-y-3"></div>
+              <button id="btn-open-call" class="mt-4 w-full lg:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold">
+                Abrir Novo Chamado
+              </button>
+            </div>
+
+            <div id="tab-packages" class="tab-pane mt-4 hidden">
+              <div id="morador-packages" class="space-y-3"></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+  <script src="api.js"></script>
+  <script>
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    let loggedResident = null;
+
+    const THEME_KEY = 'condo_theme';
+    const themeIcon = document.getElementById('theme-icon');
+    const getPreferredTheme = () => {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    };
+    const applyTheme = (theme) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      if (themeIcon) themeIcon.textContent = theme === 'dark' ? 'light_mode' : 'dark_mode';
+    };
+    let currentTheme = getPreferredTheme();
+    applyTheme(currentTheme);
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(THEME_KEY, currentTheme);
+      applyTheme(currentTheme);
+    });
+
+    function setTab(tab) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-brand-600', 'text-white');
+        btn.classList.add('text-slate-600', 'dark:text-slate-300');
+      });
+      const active = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+      active.classList.add('bg-brand-600', 'text-white');
+      active.classList.remove('text-slate-600', 'dark:text-slate-300');
+    }
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+
+    const normalizePhone = (value = '') => String(value).replace(/\D/g, '');
+
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      const phoneRaw = document.getElementById('login-phone').value.trim();
+      const phone = normalizePhone(phoneRaw);
+      if (!phone) return;
+      const btn = document.getElementById('btn-login');
+      btn.textContent = 'Validando...';
+      const residents = await window.BackendAPI.getResidents();
+      const resident = residents.find(r => normalizePhone(r.phone) === phone);
+      if (!resident) {
+        document.getElementById('login-error').classList.remove('hidden');
+        btn.textContent = 'Entrar';
+        return;
+      }
+      loggedResident = resident;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app-screen').classList.remove('hidden');
+      await loadApp();
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => window.location.reload());
+
+    function setMetric(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+      const mobile = document.getElementById(`${id}-mobile`);
+      if (mobile) mobile.textContent = value;
+    }
+
+    async function loadApp() {
+      await loadCondoName();
+      document.getElementById('morador-name').textContent = `Olá, ${loggedResident.name.split(' ')[0]}`;
+      document.getElementById('morador-unit').textContent = loggedResident.unitDisplay;
+
+      const notices = await window.BackendAPI.getNotices();
+      setMetric('stat-notices', notices.length);
+      document.getElementById('morador-notices').innerHTML = notices.map(n => `
+        <article class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/60">
+          <div class="flex items-start justify-between gap-3">
+            <h4 class="font-semibold">${n.title}</h4>
+            <span class="text-[10px] px-2 py-1 rounded-full ${n.type === 'warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300' : 'bg-sky-100 text-sky-700 dark:bg-sky-400/20 dark:text-sky-300'}">${n.type === 'warning' ? 'Urgente' : 'Informativo'}</span>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 mt-2">${n.content}</p>
+          <p class="text-xs text-slate-400 mt-2">${n.date || ''}</p>
+        </article>
+      `).join('') || `<p class="text-sm text-slate-500">Nenhum aviso no momento.</p>`;
+
+      await loadCalls();
+      await loadPackages();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    async function loadCalls() {
+      const maint = await window.BackendAPI.getMaintenance();
+      const myCalls = maint.filter(m => m.location.includes(loggedResident.unitDisplay) || m.location === String(loggedResident.id));
+      const openCalls = myCalls.filter(c => c.status === 'open' || c.status === 'progress').length;
+      setMetric('stat-calls-open', openCalls);
+
+      document.getElementById('morador-calls').innerHTML = myCalls.map(c => {
+        const label = c.status === 'done' ? 'CONCLUÍDO' : c.status === 'progress' ? 'EM ANDAMENTO' : 'ABERTO';
+        const tone = c.status === 'done'
+          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300'
+          : c.status === 'progress'
+          ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300'
+          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+        return `
+          <article class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/60">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm font-medium">${c.title}</p>
+              <span class="text-[10px] px-2 py-1 rounded-full ${tone}">${label}</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">${c.displayDate || ''}</p>
+            ${c.photoDataUrl ? `<img src="${c.photoDataUrl}" alt="Foto do chamado" class="mt-3 w-full max-h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700">` : ''}
+          </article>
+        `;
+      }).join('') || `<p class="text-sm text-slate-500">Você não tem chamados.</p>`;
+    }
+
+    async function loadPackages() {
+      const parcels = await window.BackendAPI.getResidentParcels(loggedResident.id);
+      setMetric('stat-packages-pending', parcels.filter(p => p.status === 'pending').length);
+
+      document.getElementById('morador-packages').innerHTML = parcels.map(p => `
+        <article class="parcel-item rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/60 cursor-pointer"
+                 data-parcel='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
+          <div class="flex justify-between gap-3">
             <div>
-                <h2 id="morador-name" style="margin:0; font-size: 1.2rem; color: white;">Bem vindo</h2>
-                <span id="morador-unit" style="font-size: 0.85rem; color: var(--text-muted);">Unidade</span>
+              <p class="font-semibold text-sm">${p.carrier || 'Encomenda recebida'}</p>
+              <p class="text-xs text-slate-500 mt-1">${p.receivedAtLabel || ''}</p>
             </div>
-            <button id="btn-logout" class="btn btn-outline" style="padding: 6px;"><i data-lucide="log-out" style="width:16px;"></i></button>
-        </div>
+            <span class="text-[10px] px-2 py-1 h-fit rounded-full ${p.status === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300'}">
+              ${p.status === 'pending' ? 'Aguardando retirada' : 'Entregue'}
+            </span>
+          </div>
+        </article>
+      `).join('') || `<p class="text-sm text-slate-500">Sem encomendas.</p>`;
 
-        <div style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
-            
-            <div class="section-card glass" style="margin: 0; padding: 1rem;">
-                <h3 style="margin-top: 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i data-lucide="bell" style="width:16px; vertical-align:text-bottom;"></i> Avisos Recentes</h3>
-                <div id="morador-notices" style="display:flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                    <!-- Avisos -->
-                </div>
+      document.querySelectorAll('.parcel-item').forEach(card => {
+        card.addEventListener('click', () => {
+          const parcel = JSON.parse(card.getAttribute('data-parcel').replace(/&apos;/g, "'"));
+          openParcelDetailsModal(parcel);
+        });
+      });
+    }
+
+    function openParcelDetailsModal(parcel) {
+      const overlay = document.createElement('div');
+      overlay.className = 'fixed inset-0 bg-black/60 z-[9999] grid place-items-center p-3';
+      overlay.innerHTML = `
+        <div class="w-full max-w-xl max-h-[90dvh] overflow-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-bold text-lg">Detalhes da Encomenda</h3>
+            <button id="parcel-close" class="text-sm text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">Fechar</button>
+          </div>
+          ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" class="w-full max-h-72 object-cover rounded-xl border border-slate-200 dark:border-slate-700 mb-3" alt="Foto da encomenda">` : ''}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <div><span class="text-slate-500">Transportadora/Origem</span><p>${parcel.carrier || '-'}</p></div>
+            <div><span class="text-slate-500">Status</span><p>${parcel.status === 'pending' ? 'Aguardando retirada' : 'Entregue'}</p></div>
+            <div><span class="text-slate-500">Recebida em</span><p>${parcel.receivedAtLabel || '-'}</p></div>
+            <div><span class="text-slate-500">Referência</span><p>${parcel.trackingCode || '-'}</p></div>
+            <div class="sm:col-span-2"><span class="text-slate-500">Observações</span><p>${parcel.notes || '-'}</p></div>
+            <div><span class="text-slate-500">Retirada em</span><p>${parcel.deliveredAtLabel || '-'}</p></div>
+            <div><span class="text-slate-500">Recebido por</span><p>${parcel.receivedBy || '-'}</p></div>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#parcel-close').onclick = () => overlay.remove();
+      overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+    }
+
+    function readImageAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Falha ao ler imagem.'));
+        reader.readAsDataURL(file);
+      });
+    }
+    function resizeImage(dataUrl, maxWidth = 960, quality = 0.72) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          const ratio = image.width > maxWidth ? maxWidth / image.width : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(image.width * ratio);
+          canvas.height = Math.round(image.height * ratio);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        image.onerror = () => reject(new Error('Falha ao processar imagem.'));
+        image.src = dataUrl;
+      });
+    }
+
+    function openIssueModal() {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black/60 z-[9999] grid place-items-center p-3';
+        overlay.innerHTML = `
+          <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+            <h3 class="font-bold text-lg mb-3">Abrir Chamado</h3>
+            <label class="text-xs text-slate-500">Foto (opcional)</label>
+            <input id="issue-photo" type="file" accept="image/*" capture="environment" class="hidden">
+            <label for="issue-photo" class="mt-1 w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer text-sm font-semibold">
+              <span class="material-symbols-outlined text-base">photo_camera</span>
+              Abrir câmera / galeria
+            </label>
+            <div id="issue-photo-name" class="text-xs text-slate-500 mt-2">Nenhum arquivo selecionado</div>
+            <img id="issue-photo-preview" class="hidden mt-2 w-full max-h-44 object-cover rounded-xl border border-slate-200 dark:border-slate-700" alt="Prévia da foto">
+            <label class="text-xs text-slate-500 block mt-3">Descrição</label>
+            <textarea id="issue-input" rows="4" placeholder="Descreva o problema..."
+              class="mt-1 w-full rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"></textarea>
+            <div class="flex gap-2 mt-3">
+              <button id="issue-cancel" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700">Cancelar</button>
+              <button id="issue-save" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white font-semibold">Enviar</button>
             </div>
+          </div>`;
+        document.body.appendChild(overlay);
 
-            <div class="section-card glass" style="margin: 0; padding: 1rem;">
-                <h3 style="margin-top: 0; font-size: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;"><i data-lucide="tool" style="width:16px; vertical-align:text-bottom;"></i> Meus Chamados</h3>
-                <div id="morador-calls" style="display:flex; flex-direction: column; gap: 10px; margin-top: 15px;">
-                    <!-- Chamados -->
-                </div>
-                <button id="btn-open-call" class="btn btn-outline" style="width:100%; margin-top: 15px; justify-content:center;">Abrir Novo Chamado</button>
-            </div>
-        </div>
-    </div>
+        const close = (value = null) => { overlay.remove(); resolve(value); };
+        overlay.querySelector('#issue-cancel').onclick = () => close(null);
+        overlay.onclick = (e) => { if (e.target === overlay) close(null); };
 
-    <!-- Firebase SDK (Compat) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    
-    <!-- Scripts unificados -->
-    <script src="api.js"></script>
-    <script>
-        lucide.createIcons();
-        let loggedResident = null;
+        let issuePhotoDataUrl = '';
+        const inputFile = overlay.querySelector('#issue-photo');
+        const preview = overlay.querySelector('#issue-photo-preview');
+        const photoName = overlay.querySelector('#issue-photo-name');
 
-        document.getElementById('btn-login').addEventListener('click', async () => {
-            const phone = document.getElementById('login-phone').value.trim();
-            if(!phone) return;
-            
-            const btn = document.getElementById('btn-login');
-            btn.textContent = "Validando...";
-            
-            // Busca morador por telefone (Como se fosse login)
-            const residents = await window.BackendAPI.getResidents();
-            const resident = residents.find(r => r.phone === phone);
-            
-            if(resident) {
-                loggedResident = resident;
-                document.getElementById('login-error').style.display = 'none';
-                document.getElementById('login-screen').style.display = 'none';
-                
-                document.getElementById('app-screen').style.display = 'flex';
-                document.body.style.alignItems = 'flex-start';
-                
-                loadApp();
-            } else {
-                document.getElementById('login-error').style.display = 'block';
-                btn.textContent = "Entrar na Conta";
-            }
-        });
+        inputFile.onchange = async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) {
+            issuePhotoDataUrl = '';
+            preview.classList.add('hidden');
+            preview.src = '';
+            photoName.textContent = 'Nenhum arquivo selecionado';
+            return;
+          }
+          photoName.textContent = file.name;
+          issuePhotoDataUrl = await resizeImage(await readImageAsDataUrl(file), 960, 0.72);
+          preview.src = issuePhotoDataUrl;
+          preview.classList.remove('hidden');
+        };
 
-        document.getElementById('btn-logout').addEventListener('click', () => {
-            window.location.reload();
-        });
+        overlay.querySelector('#issue-save').onclick = () => {
+          const issue = overlay.querySelector('#issue-input').value.trim();
+          if (!issue) return;
+          close({ issue, photoDataUrl: issuePhotoDataUrl });
+        };
+      });
+    }
 
-        async function loadApp() {
-            document.getElementById('morador-name').textContent = `Olá, ${loggedResident.name.split(' ')[0]}`;
-            document.getElementById('morador-unit').textContent = loggedResident.unitDisplay;
-            
-            const notices = await window.BackendAPI.getNotices();
-            document.getElementById('morador-notices').innerHTML = notices.map(n => `
-                <div style="border-left: 2px solid var(--${n.type === 'warning' ? 'warning' : 'info'}); padding-left: 10px;">
-                    <b style="font-size:0.9rem; color:var(--text-main);">${n.title}</b>
-                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${n.content}</div>
-                </div>
-            `).join('') || `<span style="font-size:0.8rem; color:var(--text-muted);">Nenhum recado do síndico.</span>`;
+    document.getElementById('btn-open-call').addEventListener('click', async () => {
+      const payload = await openIssueModal();
+      if (payload?.issue) {
+        await window.BackendAPI.addMaintenance(payload.issue, "Normal", "", loggedResident.unitDisplay, payload.photoDataUrl || "");
+        await loadCalls();
+        alert("Chamado enviado.");
+      }
+    });
 
-            loadCalls();
-        }
+    async function loadCondoName() {
+      try {
+        const settings = await window.BackendAPI.getSettings();
+        const condoName = settings?.name?.trim() || 'CondoManager';
+        const loginEl = document.getElementById('condo-name-login');
+        const sidebarEl = document.getElementById('condo-name-sidebar');
+        if (loginEl) loginEl.textContent = condoName;
+        if (sidebarEl) sidebarEl.textContent = condoName;
+      } catch (_) {}
+    }
 
-        async function loadCalls() {
-            const maint = await window.BackendAPI.getMaintenance();
-            const myCalls = maint.filter(m => m.location.includes(loggedResident.unitDisplay) || m.location === String(loggedResident.id));
-            
-            document.getElementById('morador-calls').innerHTML = myCalls.map(c => `
-                <div style="display:flex; justify-content:space-between; align-items:center; border: 1px solid var(--surface-border); padding: 8px; border-radius: 6px;">
-                    <span style="font-size:0.85rem;">${c.title}</span>
-                    <span style="font-size:0.7rem; padding: 2px 6px; border-radius:4px; font-weight:bold; 
-                        ${c.status==='done'?'background:rgba(34,197,94,0.2); color:var(--success)':
-                        c.status==='progress'?'background:rgba(245,158,11,0.2); color:var(--warning)':
-                        'background:transparent; border:1px solid #555;'};">
-                        ${c.status.toUpperCase()}
-                    </span>
-                </div>
-            `).join('') || `<span style="font-size:0.8rem; color:var(--text-muted);">Você não tem chamados abertos.</span>`;
-        }
-
-        function openIssueModal() {
-            return new Promise((resolve) => {
-                const overlay = document.createElement('div');
-                overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;';
-                overlay.innerHTML = `
-                    <div style="width:420px;max-width:calc(100vw - 32px);background:var(--surface-color);border:1px solid var(--surface-border);border-radius:14px;padding:1rem;">
-                        <h3 style="margin:0 0 .8rem 0;">Abrir Chamado</h3>
-                        <textarea id="issue-input" rows="4" placeholder="Descreva o problema..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--surface-border);background:rgba(0,0,0,.2);color:var(--text-main);font-family:inherit;"></textarea>
-                        <div style="display:flex;gap:.7rem;margin-top:.8rem;">
-                            <button id="issue-cancel" style="flex:1;padding:.55rem;border-radius:8px;border:1px solid var(--surface-border);background:transparent;color:var(--text-main);cursor:pointer;">Cancelar</button>
-                            <button id="issue-save" style="flex:1;padding:.55rem;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer;">Enviar</button>
-                        </div>
-                    </div>
-                `;
-                document.body.appendChild(overlay);
-                const close = (value = null) => { overlay.remove(); resolve(value); };
-                overlay.querySelector('#issue-cancel').onclick = () => close(null);
-                overlay.onclick = (e) => { if (e.target === overlay) close(null); };
-                overlay.querySelector('#issue-save').onclick = () => {
-                    const value = overlay.querySelector('#issue-input').value.trim();
-                    if (!value) return;
-                    close(value);
-                };
-            });
-        }
-
-        document.getElementById('btn-open-call').addEventListener('click', async () => {
-            const issue = await openIssueModal();
-            if(issue) {
-                await window.BackendAPI.addMaintenance(issue, loggedResident.unitDisplay);
-                alert("Chamado aberto para o síndico!");
-                loadCalls();
-            }
-        });
-    </script>
+    loadCondoName();
+  </script>
 </body>
 </html>

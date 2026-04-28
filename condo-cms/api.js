@@ -267,7 +267,7 @@ const firebaseConfig = {
           return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       },
   
-      addMaintenance: async (title, urgency, desc, location) => {
+      addMaintenance: async (title, urgency, desc, location, photoDataUrl = "") => {
           const msDate = new Date();
           const dateStr = msDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
           const docRef = await db.collection("maintenance").add({
@@ -276,6 +276,7 @@ const firebaseConfig = {
               title,
               urgency,
               desc,
+              photoDataUrl,
               location,
               status: "open"
           });
