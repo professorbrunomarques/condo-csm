@@ -69,14 +69,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- PROFILE PHOTO LOGIC (Priority Attachment) ---
-    const savedPhoto = localStorage.getItem('condo_user_photo');
+    const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' rx='60' fill='%23e2e8f0'/%3E%3Ccircle cx='60' cy='46' r='22' fill='%2394a3b8'/%3E%3Cpath d='M24 98c6-18 20-28 36-28s30 10 36 28' fill='%2394a3b8'/%3E%3C/svg%3E";
+    const photoStorageKey = user ? `condo_user_photo_${user.id}` : 'condo_user_photo_guest';
+    const savedPhoto = localStorage.getItem(photoStorageKey);
     const updateAvatars = (url) => {
         document.querySelectorAll('.user-avatar-img').forEach(img => {
             img.src = url;
             console.log("Avatar atualizado:", url);
         });
     };
-    if (savedPhoto) updateAvatars(savedPhoto);
+    updateAvatars(savedPhoto || DEFAULT_AVATAR);
 
     console.log("Vinculando listener de Alterar Foto...");
     const btnChangePhoto = document.getElementById('btn-change-photo');
@@ -87,11 +89,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 title: 'Alterar Foto de Perfil',
                 submitLabel: 'Salvar',
                 fields: [
-                    { name: 'url', label: 'URL da Imagem (JPG/PNG)', type: 'text', value: savedPhoto || "https://i.pravatar.cc/150?u=admin", required: true }
+                    { name: 'url', label: 'URL da Imagem (JPG/PNG)', type: 'text', value: savedPhoto || DEFAULT_AVATAR, required: true }
                 ]
             });
             if (result?.url && result.url.trim() !== '') {
-                localStorage.setItem('condo_user_photo', result.url.trim());
+                localStorage.setItem(photoStorageKey, result.url.trim());
                 updateAvatars(result.url.trim());
             }
         };
@@ -210,6 +212,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const genericFormFields = document.getElementById('generic-form-fields');
     const genericFormCancel = document.getElementById('generic-form-cancel');
     const genericFormSave = document.getElementById('generic-form-save');
+    const USER_ROLE_OPTIONS = [
+        { value: 'Administrador', label: 'Administrador' },
+        { value: 'Síndico', label: 'Síndico' },
+        { value: 'Porteiro', label: 'Porteiro' },
+        { value: 'Zelador', label: 'Zelador' },
+        { value: 'Financeiro', label: 'Financeiro' },
+        { value: 'Operador', label: 'Operador' }
+    ];
 
     function escapeHtml(value = '') {
         return String(value)
@@ -1524,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         fields: [
                             { name: 'name', label: 'Nome completo', type: 'text', value: oldName, required: true },
                             { name: 'username', label: 'Usuário (login)', type: 'text', value: oldUsername, required: true },
-                            { name: 'role', label: 'Cargo', type: 'text', value: oldRole, required: true },
+                            { name: 'role', label: 'Cargo', type: 'select', value: oldRole, required: true, options: USER_ROLE_OPTIONS },
                             { name: 'password', label: 'Nova senha (opcional)', type: 'password', value: '' }
                         ]
                     });
@@ -1564,7 +1574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 { name: 'name', label: 'Nome completo', type: 'text', required: true },
                 { name: 'username', label: 'Usuário (login)', type: 'text', required: true },
                 { name: 'password', label: 'Senha', type: 'password', required: true },
-                { name: 'role', label: 'Cargo', type: 'text', value: 'Operador', required: true }
+                { name: 'role', label: 'Cargo', type: 'select', value: 'Operador', required: true, options: USER_ROLE_OPTIONS }
             ]
         });
         if(!result) return;
