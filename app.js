@@ -1921,34 +1921,40 @@ document.addEventListener('DOMContentLoaded', async () => {
         let initialLoad = { maintenance: true, parcels: true, notices: true, occurrences: true };
         let lastCounts = { maintenance: 0, parcels: 0, notices: 0, occurrences: 0 };
 
+        // Cria o AudioContext uma vez e desbloqueia no primeiro clique do usuário.
+        // Navegadores modernos só permitem som após uma interação humana real.
+        let _audioCtx = null;
+        const getAudioCtx = () => {
+            if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (_audioCtx.state === 'suspended') _audioCtx.resume();
+            return _audioCtx;
+        };
+        // Desbloqueia ao primeiro clique em qualquer lugar da página
+        document.addEventListener('click', () => { try { getAudioCtx(); } catch(e){} }, { once: true });
+
         const playNotificationSound = () => {
             if (localStorage.getItem('condo_sound_enabled') === 'false') return;
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(880, ctx.currentTime); 
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
-                osc.start();
-                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3);
-                osc.stop(ctx.currentTime + 0.3);
-                
-                setTimeout(() => {
-                    const osc2 = ctx.createOscillator();
-                    const gain2 = ctx.createGain();
-                    osc2.connect(gain2);
-                    gain2.connect(ctx.destination);
-                    osc2.type = 'sine';
-                    osc2.frequency.setValueAtTime(1108.73, ctx.currentTime); 
-                    gain2.gain.setValueAtTime(0.05, ctx.currentTime);
-                    osc2.start();
-                    gain2.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.4);
-                    osc2.stop(ctx.currentTime + 0.4);
-                }, 150);
-            } catch (e) { console.warn("Audio blocked", e); }
+                const ctx = getAudioCtx();
+                if (!ctx) return;
+
+                const beep = (freq, startTime, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.08, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.00001, startTime + duration);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+
+                const now = ctx.currentTime;
+                beep(880, now, 0.25);
+                beep(1108, now + 0.15, 0.3);
+            } catch (e) { console.warn("Audio blocked:", e); }
         };
 
         // Real-time listener for maintenance calls
