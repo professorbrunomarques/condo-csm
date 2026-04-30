@@ -35,6 +35,14 @@
   </script>
 </head>
 <body class="bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-dvh">
+  <!-- Modal Visualizar Imagem -->
+  <div id="image-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/90 backdrop-blur-md cursor-zoom-out">
+      <button id="close-image-modal" class="absolute top-6 right-6 text-white hover:text-slate-300 transition-colors p-2 bg-white/10 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <img id="image-modal-img" src="" class="max-w-[95%] max-h-[95%] rounded-lg shadow-2xl border border-white/10 object-contain">
+  </div>
+
   <!-- Login -->
   <section id="login-screen" class="min-h-dvh grid place-items-center p-4">
     <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-6">
@@ -311,7 +319,7 @@
               <span class="text-[10px] px-2 py-1 rounded-full ${tone}">${label}</span>
             </div>
             <p class="text-xs text-slate-500 mt-2">${c.displayDate || ''}</p>
-            ${c.photoDataUrl ? `<img src="${c.photoDataUrl}" alt="Foto do chamado" class="mt-3 w-full max-h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700">` : ''}
+            ${c.photoDataUrl ? `<img src="${c.photoDataUrl}" alt="Foto do chamado" class="mt-3 w-full max-h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700 cursor-zoom-in" data-fullscreen-img="${c.photoDataUrl}">` : ''}
           </article>
         `;
       }).join('') || `<p class="text-sm text-slate-500">Você não tem chamados.</p>`;
@@ -375,7 +383,7 @@
             <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">${o.date}</p>
             <div class="mt-3 p-3 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
                 <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${o.description}</p>
-                ${o.mediaDataUrl ? `<img src="${o.mediaDataUrl}" class="mt-3 w-full max-h-60 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-zoom-in" onclick="window.open('${o.mediaDataUrl}', '_blank')">` : ''}
+                ${o.mediaDataUrl ? `<img src="${o.mediaDataUrl}" class="mt-3 w-full max-h-60 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-zoom-in" data-fullscreen-img="${o.mediaDataUrl}">` : ''}
             </div>
             
             <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
@@ -621,6 +629,47 @@
     }
 
     loadCondoName();
+
+    // --- IMAGE LIGHTBOX LOGIC ---
+    const imageModal = document.getElementById('image-modal');
+    const imageModalImg = document.getElementById('image-modal-img');
+    const closeImageModal = document.getElementById('close-image-modal');
+
+    window.showImageFullscreen = (url) => {
+      const modal = document.getElementById('image-modal') || imageModal;
+      const img = document.getElementById('image-modal-img') || imageModalImg;
+      if (!modal || !img) return;
+      img.src = url;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    const hideImageModal = () => {
+      const modal = document.getElementById('image-modal') || imageModal;
+      const img = document.getElementById('image-modal-img') || imageModalImg;
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (img) img.src = '';
+    };
+
+    // Global delegate for images
+    document.addEventListener('click', (e) => {
+      const trigger = e.target.closest('[data-fullscreen-img]');
+      if (trigger) {
+        const url = trigger.getAttribute('data-fullscreen-img');
+        if (url) window.showImageFullscreen(url);
+      }
+      
+      // Handle closing if clicked on modal or close button
+      if (e.target.closest('#image-modal') || e.target.closest('#close-image-modal')) {
+        // But only if we are NOT clicking the image itself
+        if (!e.target.closest('#image-modal-img')) {
+          hideImageModal();
+        }
+      }
+    });
   </script>
 </body>
 </html>

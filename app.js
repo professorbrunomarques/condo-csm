@@ -284,7 +284,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function formatPhoneForWhatsApp(phone = '') {
-        return String(phone).replace(/\D/g, '');
+        let clean = String(phone).replace(/\D/g, '');
+        // Suporte para Brasil (DDI 55)
+        if (clean.length === 10 || clean.length === 11) {
+            clean = '55' + clean;
+        }
+        return clean;
     }
 
     function buildParcelWhatsAppMessage(parcel) {
@@ -313,7 +318,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     function resetPackageForm() {
-        const residentSelect = document.getElementById('package-resident-id');
+        const blockSelect = document.getElementById('package-block-id');
+        const unitInput = document.getElementById('package-unit-number');
+        const residentDisplay = document.getElementById('package-resident-display');
+        const residentHidden = document.getElementById('package-resident-id');
         const carrierInput = document.getElementById('package-carrier');
         const codeInput = document.getElementById('package-code');
         const notesInput = document.getElementById('package-notes');
@@ -321,7 +329,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const previewWrap = document.getElementById('package-photo-preview-wrap');
         const previewImage = document.getElementById('package-photo-preview');
 
-        if (residentSelect) residentSelect.value = '';
+        if (blockSelect) blockSelect.value = '';
+        if (unitInput) unitInput.value = '';
+        if (residentDisplay) {
+            residentDisplay.value = '';
+            residentDisplay.placeholder = 'Informe bloco e unidade para localizar...';
+            residentDisplay.style.borderColor = '';
+        }
+        if (residentHidden) residentHidden.value = '';
         if (carrierInput) carrierInput.value = '';
         if (codeInput) codeInput.value = '';
         if (notesInput) notesInput.value = '';
@@ -902,12 +917,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const itemHtml = `
-                <div class="notice-item" style="display:flex; justify-content: space-between; align-items:flex-end;">
-                    <div>
-                        <span style="font-size: 0.75rem; color: var(--text-muted);">${call.location}</span>
-                        <div class="notice-title" style="margin-top:4px;">${call.title}</div>
+                <div class="notice-item clickable maint-card" data-id="${call.id}" style="display:flex; justify-content: space-between; align-items:flex-end; position: relative;">
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">${call.location}</span>
+                        <div class="notice-title" style="margin-top:2px; font-weight: 500;">${call.title}</div>
+                        <div style="font-size: 0.7rem; color: var(--primary-light); margin-top: 4px; display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="eye" style="width: 12px;"></i> Ver detalhes
+                        </div>
                     </div>
-                    <div>${controls}</div>
+                    <div class="maint-controls" style="position: relative; z-index: 2;">${controls}</div>
                 </div>
             `;
             if (call.status === 'open') { htmlOpen += itemHtml; countOpen++; }
@@ -927,6 +945,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.querySelectorAll('.btn-move').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.stopPropagation(); // Não abrir o modal ao clicar nos botões de mover
                 const btnEl = e.currentTarget;
                 btnEl.style.opacity = 0.5;
                 const id = btnEl.getAttribute('data-id');
@@ -936,6 +955,56 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loadDashboardStats();
             });
         });
+
+        document.querySelectorAll('.maint-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = card.getAttribute('data-id');
+                openMaintenanceModal(id);
+            });
+        });
+    }
+
+    async function openMaintenanceModal(id) {
+        const modal = document.getElementById('maint-details-modal');
+        if (!modal) return;
+
+        const calls = await API.getMaintenance();
+        const call = calls.find(c => c.id === id);
+        if (!call) return;
+
+        // Populate modal
+        const titleEl = document.getElementById('maint-modal-title');
+        const locationEl = document.getElementById('maint-modal-location');
+        const descEl = document.getElementById('maint-modal-desc');
+        const photoContainer = document.getElementById('maint-modal-photo-container');
+        const photoImg = document.getElementById('maint-modal-photo');
+
+        titleEl.textContent = call.title;
+        locationEl.textContent = call.location || 'Sem local definido';
+        descEl.textContent = call.desc || 'Sem descrição adicional.';
+        
+        if (call.photoDataUrl) {
+            photoImg.src = call.photoDataUrl;
+            photoContainer.style.display = 'block';
+        } else {
+            photoContainer.style.display = 'none';
+        }
+
+        // Setup Buttons in modal
+        const btnOpen = document.getElementById('maint-modal-btn-open');
+        const btnProgress = document.getElementById('maint-modal-btn-progress');
+        const btnDone = document.getElementById('maint-modal-btn-done');
+
+        btnOpen.onclick = async () => { await API.updateMaintenanceStatus(id, 'open'); modal.style.display = 'none'; loadMaintenance(); };
+        btnProgress.onclick = async () => { await API.updateMaintenanceStatus(id, 'progress'); modal.style.display = 'none'; loadMaintenance(); };
+        btnDone.onclick = async () => { await API.updateMaintenanceStatus(id, 'done'); modal.style.display = 'none'; loadMaintenance(); };
+
+        modal.style.display = 'flex';
+
+        // Close logic
+        const closeBtn = document.getElementById('close-maint-modal');
+        closeBtn.onclick = () => modal.style.display = 'none';
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
     }
 
     async function loadPackages() {
@@ -947,16 +1016,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (deliveredList) deliveredList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Carregando...</div>';
 
         try {
-            const [residents, parcels] = await Promise.all([
+            const [blocks, residents, parcels] = await Promise.all([
+                API.getBlocks(),
                 API.getResidents(),
                 API.getParcels()
             ]);
 
-            if (residentSelect) {
-                const currentValue = residentSelect.value;
-                residentSelect.innerHTML = '<option value="">Selecione o morador...</option>' +
-                    residents.map(res => `<option value="${res.id}">${res.name} (${res.unitDisplay})</option>`).join('');
-                residentSelect.value = currentValue || '';
+            currentResidents = residents;
+
+            const blockSelect = document.getElementById('package-block-id');
+            if (blockSelect) {
+                blockSelect.innerHTML = '<option value="">Selecione o bloco...</option>' +
+                    blocks.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
             }
 
             renderParcels(parcels);
@@ -987,7 +1058,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             pendingList.innerHTML = pending.map(parcel => `
                 <div class="notice-item" style="border-left-color: var(--warning);">
                     <div style="display:flex; gap:12px; align-items:flex-start;">
-                        ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda de ${parcel.residentName}" style="width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--surface-border);">` : ''}
+                        ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda de ${parcel.residentName}" class="w-16 h-16 object-cover rounded-xl border border-surface-border cursor-pointer" data-fullscreen-img="${parcel.photoDataUrl}">` : ''}
                         <div style="flex:1;">
                             <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
                                 <div>
@@ -1141,7 +1212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid var(--surface-border); margin-bottom: 20px;">
                         <p style="margin:0; font-size:0.95rem; line-height:1.6; white-space: pre-wrap;">${o.description}</p>
                         ${o.mediaDataUrl ? `
-                            <div style="margin-top:15px; cursor: pointer;" onclick="window.open('${o.mediaDataUrl}', '_blank')">
+                            <div style="margin-top:15px; cursor: pointer;" data-fullscreen-img="${o.mediaDataUrl}">
                                 <img src="${o.mediaDataUrl}" style="max-width:100%; max-height:400px; border-radius:12px; border:1px solid var(--surface-border); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                                 <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;"><i data-lucide="maximize" style="width: 10px;"></i> Clique para ampliar</p>
                             </div>
@@ -1389,9 +1460,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         button.disabled = false;
-        button.innerHTML = '<i data-lucide="plus" style="width:18px;"></i> Registrar Encomenda';
         lucide.createIcons();
     });
+
+    // Auto-match resident for package form
+    const matchResident = () => {
+        const blockId = document.getElementById('package-block-id')?.value;
+        const unitNum = document.getElementById('package-unit-number')?.value.trim();
+        const display = document.getElementById('package-resident-display');
+        const hidden = document.getElementById('package-resident-id');
+
+        if (!blockId || !unitNum) {
+            if (display) display.value = '';
+            if (hidden) hidden.value = '';
+            return;
+        }
+
+        const match = currentResidents.find(r => {
+            const blockSelect = document.getElementById('package-block-id');
+            const blockName = blockSelect.options[blockSelect.selectedIndex]?.text;
+            return r.unitDisplay === `${blockName} - ${unitNum}`;
+        });
+
+        if (match) {
+            display.value = `✅ ${match.name}`;
+            display.style.borderColor = 'var(--success)';
+            hidden.value = match.id;
+            setPackageFeedback('Morador identificado.', 'success');
+        } else {
+            display.value = '❌ Não encontrado';
+            display.style.borderColor = 'var(--danger)';
+            hidden.value = '';
+            setPackageFeedback('Nenhum morador nesta unidade.', 'error');
+        }
+    };
+
+    document.getElementById('package-block-id')?.addEventListener('change', matchResident);
+    document.getElementById('package-unit-number')?.addEventListener('input', matchResident);
 
     // --- PORTAL DO MORADOR LOGIC --- //
     async function loadPortalSim(forceReload = false) {
@@ -2184,6 +2289,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initial Load for Settings data (just for the sidebar)
     loadSettings();
     refreshNotifications();
+
+    // --- IMAGE LIGHTBOX LOGIC ---
+    const imageModal = document.getElementById('image-modal');
+    const imageModalImg = document.getElementById('image-modal-img');
+    const closeImageModal = document.getElementById('close-image-modal');
+
+    window.showImageFullscreen = (url) => {
+        const modal = document.getElementById('image-modal') || imageModal;
+        const img = document.getElementById('image-modal-img') || imageModalImg;
+        if (!modal || !img) return;
+        img.src = url;
+        modal.style.display = 'flex';
+        modal.style.zIndex = '9999';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    };
+
+    const hideImageModal = () => {
+        const modal = document.getElementById('image-modal') || imageModal;
+        const img = document.getElementById('image-modal-img') || imageModalImg;
+        if (modal) modal.style.display = 'none';
+        if (img) img.src = '';
+    };
+
+    // Global delegate for images
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('[data-fullscreen-img]');
+        if (trigger) {
+            const url = trigger.getAttribute('data-fullscreen-img');
+            if (url) window.showImageFullscreen(url);
+        }
+    });
+
+    imageModal?.addEventListener('click', hideImageModal);
+    closeImageModal?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        hideImageModal();
+    });
 
     console.log("✅ Sistema pronto e listeners anexados.");
 });
