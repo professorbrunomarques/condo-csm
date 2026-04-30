@@ -183,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (targetId === 'packages') loadPackages();
                     if (targetId === 'occurrences') renderAdminOccurrences(currentOccurrences);
                     if (targetId === 'org') loadOrg();
-                    if (targetId === 'portal') loadPortalSim();
                     if (targetId === 'users') loadUsers();
                 }
             });
@@ -1245,7 +1244,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
         }).join('') || '<p style="color:var(--text-muted); text-align: center; padding: 40px;">Nenhuma ocorrência registrada no livro.</p>';
 
-        lucide.createIcons();
+        try {
+            lucide.createIcons();
+        } catch(e) {
+            console.warn("Lucide icons failed:", e);
+        }
 
         // Bind buttons
         document.querySelectorAll('.btn-reply-occ').forEach(btn => {
@@ -1262,10 +1265,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         document.querySelectorAll('.btn-resolve-occ').forEach(btn => {
             btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 const id = e.currentTarget.getAttribute('data-id');
                 if (!confirm('Deseja marcar esta ocorrência como RESOLVIDA? O chat será encerrado.')) return;
-                await API.resolveOccurrence(id);
-                // Listener will refresh UI
+                
+                const originalHtml = e.currentTarget.innerHTML;
+                e.currentTarget.innerHTML = '<span style="font-size: 0.75rem;">Aguarde...</span>';
+                e.currentTarget.disabled = true;
+
+                try {
+                    await API.resolveOccurrence(id);
+                    // Listener will refresh UI automatically via onSnapshot
+                } catch (err) {
+                    console.error("Erro ao concluir ocorrência:", err);
+                    alert("Erro ao concluir: " + err.message);
+                    e.currentTarget.innerHTML = originalHtml;
+                    e.currentTarget.disabled = false;
+                }
             });
         });
 
@@ -1498,121 +1516,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('package-block-id')?.addEventListener('change', matchResident);
     document.getElementById('package-unit-number')?.addEventListener('input', matchResident);
 
-    // --- PORTAL DO MORADOR LOGIC --- //
-    async function loadPortalSim(forceReload = false) {
-        const select = document.getElementById('sim-resident-select');
-        try {
-            const res = await API.getResidents();
-            const currentValue = select.value;
-            if (forceReload || select.options.length <= 1) { // Só carregar se tiver vazio
-                select.innerHTML = '<option value="">Entrar como morador...</option>' +
-                    res.map(r => `<option value="${r.id}">${r.name} (${r.unitDisplay})</option>`).join('');
-                if (currentValue && res.some(r => r.id === currentValue)) {
-                    select.value = currentValue;
-                }
-            }
-        } catch (e) { }
-    }
-
-    document.getElementById('sim-resident-select')?.addEventListener('change', async (e) => {
-        const portalContent = document.getElementById('portal-content');
-        const portalLocked = document.getElementById('portal-locked');
-        const id = e.target.value;
-
-        if (!id) {
-            portalContent.style.display = 'none';
-            portalLocked.style.display = 'block';
-            return;
-        }
-
-        try {
-            const me = await API.getResidentData(id);
-            const notices = await API.getNotices();
-            const maint = await API.getMaintenance();
-            const parcels = await API.getResidentParcels(id);
-
-            // Switch UI
-            portalLocked.style.display = 'none';
-            portalContent.style.display = 'block';
-
-            // Populate Info
-            document.getElementById('portal-welcome').textContent = `Olá, ${me.name.split(' ')[0]}!`;
-            document.getElementById('portal-unit').textContent = `${me.unitDisplay} | Veículos Cadastrados: ${me.vehiclesCount || 0}`;
-
-            // Populate Notices
-            document.getElementById('portal-notices').innerHTML = notices.map(n => `
-                <div class="notice-item" style="border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">${n.date}</span>
-                    <div class="notice-title" style="margin-top:4px; font-size:1.05rem;">${n.title}</div>
-                    <div style="font-size:0.9rem; color: var(--text-muted); margin-top:5px;">${n.content}</div>
-                </div>
-            `).join('') || `<p style="color:var(--text-muted)">Sem novos comunicados.</p>`;
-
-            // Populate My Calls (Simulating filtering by unitId in location, or just show all for demo context? We'll filter string match)
-            // Para simplicidade didática do mock, se a localização do chamado contiver o "id" ou o nome do apto, é dele.
-            const myCalls = maint.filter(m => m.location.includes(me.unitDisplay) || m.location === String(me.id));
-            document.getElementById('portal-my-calls').innerHTML = myCalls.map(c => `
-                <div class="notice-item" style="border-left-color: ${c.status === 'done' ? 'var(--success)' : c.status === 'progress' ? 'var(--warning)' : 'var(--text-muted)'}; padding: 10px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <b style="font-size:0.85rem">${c.title}</b>
-                        <span class="badge" style="background:transparent; border:1px solid #555;">${c.status}</span>
-                    </div>
-                </div>
-            `).join('') || `<p style="font-size:0.85rem; color:#888;">Sem chamados abertos.</p>`;
-
-            document.getElementById('portal-my-packages').innerHTML = parcels.map(parcel => `
-                <div class="notice-item" style="border-left-color: ${parcel.status === 'pending' ? 'var(--warning)' : 'var(--success)'}; padding: 10px;">
-                    ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda" style="width:100%; max-height:160px; object-fit:cover; border-radius:12px; margin-bottom:10px; border:1px solid var(--surface-border);">` : ''}
-                    <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
-                        <b style="font-size:0.85rem">${parcel.carrier || 'Encomenda recebida'}</b>
-                        <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:${parcel.status === 'pending' ? 'rgba(245,158,11,0.18)' : 'rgba(34,197,94,0.18)'}; color:${parcel.status === 'pending' ? 'var(--warning)' : 'var(--success)'};">
-                            ${parcel.status === 'pending' ? 'Aguardando retirada' : 'Já entregue'}
-                        </span>
-                    </div>
-                    <div style="font-size:0.82rem; color:#ddd; margin-top:8px;">
-                        <div>Recebida em ${parcel.receivedAtLabel}</div>
-                        ${parcel.trackingCode ? `<div>Referência: ${parcel.trackingCode}</div>` : ''}
-                        ${parcel.notes ? `<div>Obs.: ${parcel.notes}</div>` : ''}
-                        ${parcel.status === 'delivered' ? `<div>Retirada registrada em ${parcel.deliveredAtLabel || '-'}</div>` : ''}
-                    </div>
-                </div>
-            `).join('') || `<p style="font-size:0.85rem; color:#888;">Nenhuma encomenda vinculada no momento.</p>`;
-
-        } catch (e) {
-            console.error(e);
-        }
-    });
-
-    document.getElementById('btn-portal-open-call')?.addEventListener('click', async () => {
-        const id = document.getElementById('sim-resident-select').value;
-        if (!id) return alert("Selecione um morador no simulador primeiro.");
-
-        const result = await openFormModal({
-            title: 'Abrir Chamado',
-            submitLabel: 'Enviar',
-            fields: [
-                { name: 'title', label: 'Descrição do problema', type: 'textarea', required: true },
-                { name: 'urgency', label: 'Urgência', type: 'select', value: 'Normal', options: [{ value: 'Normal', label: 'Normal' }, { value: 'Alta', label: 'Urgente' }] }
-            ]
-        });
-        if (!result?.title) return;
-        const title = result.title.trim();
-        const urgency = result.urgency || 'Normal';
-
-        try {
-            const me = await API.getResidentData(id);
-            // Assinatura correta: addMaintenance(title, urgency, desc, location)
-            await API.addMaintenance(title, urgency, "", me.unitDisplay);
-            alert("✅ Chamado aberto com sucesso! O síndico foi notificado.");
-            // Refresh portal e dashboard
-            document.getElementById('sim-resident-select').dispatchEvent(new Event('change'));
-            loadDashboardStats();
-            loadMaintenance();
-        } catch (err) {
-            console.error("Erro ao abrir chamado:", err);
-            alert("Erro ao registrar chamado. Tente novamente.");
-        }
-    });
+    // --- VEHICLE MANAGEMENT --- //
 
     function validateVehicleData(vehicleData) {
         const type = (vehicleData.type || '').toLowerCase();

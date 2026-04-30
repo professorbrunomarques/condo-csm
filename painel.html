@@ -63,34 +63,29 @@
 
         <ul class="nav-links">
             <li><a href="#" class="nav-item active" data-target="dashboard">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
+                    <i data-lucide="layout-dashboard"></i> <span>Dashboard</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="org">
-                    <i data-lucide="building"></i> Condomínio
+                    <i data-lucide="building"></i> <span>Condomínio</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="residents">
-                    <i data-lucide="users"></i> Moradores
+                    <i data-lucide="users"></i> <span>Moradores</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="maintenance">
-                    <i data-lucide="wrench"></i> Manutenções
+                    <i data-lucide="wrench"></i> <span>Manutenções</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="occurrences">
-                    <i data-lucide="book-open"></i> Ocorrências
+                    <i data-lucide="book-open"></i> <span>Ocorrências</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="packages">
-                    <i data-lucide="package"></i> Encomendas
+                    <i data-lucide="package"></i> <span>Encomendas</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="settings">
-                    <i data-lucide="settings"></i> Configurações
+                    <i data-lucide="settings"></i> <span>Configurações</span>
                 </a></li>
             <li><a href="#" class="nav-item" data-target="users">
-                    <i data-lucide="shield-plus"></i> Usuários
+                    <i data-lucide="shield-plus"></i> <span>Usuários</span>
                 </a></li>
-            <li style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--surface-border);">
-                <a href="#" class="nav-item" data-target="portal" style="color: var(--primary-light);">
-                    <i data-lucide="user-circle"></i> Portal do Morador
-                </a>
-            </li>
         </ul>
     </aside>
 
@@ -737,74 +732,6 @@
                             <!-- Inserido dinamicamente via JS -->
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <!-- PORTAL DO MORADOR VIEW -->
-            <div id="portal" class="page-view">
-                <div
-                    style="margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px inset rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h1 class="page-title" style="color: var(--primary-light);">Painel de Acesso Rápido</h1>
-                        <p style="color: var(--text-muted);">Área restrita de auto-atendimento para o condômino.</p>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:5px; align-items:flex-end;">
-                        <label style="font-size: 12px; color: var(--text-muted);">Simulador de Login:</label>
-                        <select id="sim-resident-select"
-                            style="padding: 8px; border-radius: 6px; border: 1px solid var(--primary); background: var(--input-bg); color: var(--text-main);">
-                            <option value="">Entrar como morador...</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div id="portal-content" style="display: none;">
-                    <div style="display: flex; gap: 2rem;">
-                        <!-- Coluna Maior (Avisos e Dados) -->
-                        <div style="flex: 2; display: flex; flex-direction: column; gap: 2rem;">
-                            <div class="section-card glass"
-                                style="background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);">
-                                <h2 id="portal-welcome" style="margin-bottom: 5px;">Bem vindo(a)!</h2>
-                                <p id="portal-unit" style="color: var(--text-muted); font-size: 0.9rem;">Unidade</p>
-                            </div>
-
-                            <div class="section-card glass">
-                                <h2 class="section-title"><i data-lucide="bell" style="width:18px;"></i> Quadro de
-                                    Avisos</h2>
-                                <div id="portal-notices">
-                                    <!-- Avisos do portal -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Coluna Menor (Serviços) -->
-                        <div style="flex: 1; display: flex; flex-direction: column; gap: 2rem;">
-                            <!-- Meus Chamados -->
-                            <div class="section-card glass">
-                                <h2 class="section-title"><i data-lucide="wrench" style="width:18px;"></i> Meus Chamados
-                                </h2>
-                                <button id="btn-portal-open-call" class="btn btn-outline"
-                                    style="width: 100%; border-radius: 8px; font-size:0.8rem; margin-bottom: 1rem;">Abrir
-                                    Chamado</button>
-                                <div id="portal-my-calls" style="display: flex; flex-direction: column; gap: 10px;">
-                                    <!-- Chamados dinâmicos -->
-                                </div>
-                            </div>
-
-                            <div class="section-card glass">
-                                <h2 class="section-title"><i data-lucide="package" style="width:18px;"></i> Minhas Encomendas
-                                </h2>
-                                <div id="portal-my-packages" style="display: flex; flex-direction: column; gap: 10px;">
-                                    <!-- Encomendas dinamicas -->
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                <div id="portal-locked" style="text-align: center; padding: 4rem; opacity: 0.5;">
-                    <i data-lucide="lock" style="width: 48px; height: 48px; margin-bottom: 1rem;"></i>
-                    <p>Selecione um perfil no simulador de Login acima para desbloquear o Portal.</p>
                 </div>
             </div>
 

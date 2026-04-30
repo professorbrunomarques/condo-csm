@@ -580,43 +580,25 @@ tbody tr:hover {
 
 @media (max-width: 1024px) {
   :root {
-    --sidebar-width: 80px;
-  }
-  .logo-text, .nav-item span {
-    display: none;
-  }
-  .sidebar {
-    padding: 2rem 1rem;
-    align-items: center;
-  }
-  .nav-item {
-    justify-content: center;
-    padding: 12px;
-  }
-  .nav-item i {
-    margin: 0;
-  }
-}
-
-@media (max-width: 1024px) {
-  :root {
-    --sidebar-width: 80px;
-  }
-  
-  .stats-grid, .dashboard-sections, .responsive-grid {
-    grid-template-columns: 1fr !important;
+    --sidebar-width: 280px;
   }
   
   .sidebar {
     left: calc(var(--sidebar-width) * -1);
+    width: var(--sidebar-width);
     transition: var(--transition);
+    background: var(--surface-color);
   }
   
   .sidebar.mobile-active {
     left: 0;
     box-shadow: 10px 0 50px rgba(0,0,0,0.8);
   }
-  
+
+  .logo-text, .nav-item span {
+    display: inline-block; /* Ensure labels are visible in the mobile drawer */
+  }
+
   .main-wrapper {
     margin-left: 0;
     width: 100%;
@@ -624,6 +606,10 @@ tbody tr:hover {
   
   #menu-toggle {
     display: flex !important;
+  }
+
+  .stats-grid, .dashboard-sections, .responsive-grid {
+    grid-template-columns: 1fr !important;
   }
   
   .search-bar {
