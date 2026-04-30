@@ -283,9 +283,31 @@ const firebaseConfig = {
           return { id: docRef.id };
       },
   
-      updateMaintenanceStatus: async (id, status) => {
-          await db.collection("maintenance").doc(id).update({ status });
-      },
+    updateMaintenanceStatus: async (id, status) => {
+        await db.collection("maintenance").doc(id).update({ status });
+    },
+    
+    listenToMaintenance: (callback) => {
+        return db.collection("maintenance")
+            .orderBy("date", "desc")
+            .onSnapshot(snapshot => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(items);
+            }, error => {
+                console.error("Erro no listener de manutenção:", error);
+            });
+    },
+
+    listenToParcels: (callback) => {
+        return db.collection("parcels")
+            .orderBy("receivedAt", "desc")
+            .onSnapshot(snapshot => {
+                const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(items);
+            }, error => {
+                console.error("Erro no listener de encomendas:", error);
+            });
+    },
       
       // --- AVISOS (MURALS) ---
       getNotices: async () => {
@@ -308,6 +330,90 @@ const firebaseConfig = {
 
       deleteNotice: async (id) => {
           await db.collection("notices").doc(id).delete();
+      },
+
+      listenToNotices: (callback) => {
+          return db.collection("notices")
+              .orderBy("timestamp", "desc")
+              .onSnapshot(snapshot => {
+                  const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                  callback(items);
+              }, error => {
+                  console.error("Erro no listener de avisos:", error);
+              });
+      },
+
+      // --- OCORRÊNCIAS (OCCURRENCES) ---
+      addOccurrence: async (residentId, residentName, unitDisplay, title, description, mediaDataUrl = '') => {
+          const dt = new Date();
+          const dateStr = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric', hour: '2-digit', minute: '2-digit' });
+          const docRef = await db.collection("occurrences").add({
+              residentId,
+              residentName,
+              unitDisplay,
+              title,
+              description,
+              mediaDataUrl,
+              status: 'open',
+              timestamp: dt.getTime(),
+              date: dateStr,
+              replies: []
+          });
+          return { id: docRef.id };
+      },
+
+      getOccurrences: async () => {
+          const snapshot = await db.collection("occurrences").get();
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          return items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      },
+
+      getResidentOccurrences: async (residentId) => {
+          const snapshot = await db.collection("occurrences")
+              .where("residentId", "==", residentId)
+              .get();
+          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          return items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      },
+
+      replyToOccurrence: async (id, replyText, fromName, role = 'admin') => {
+          const dt = new Date();
+          const dateStr = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', hour: '2-digit', minute: '2-digit' });
+          const doc = await db.collection("occurrences").doc(id).get();
+          const data = doc.data();
+          const replies = data.replies || [];
+          replies.push({
+              text: replyText,
+              from: fromName,
+              role: role, // 'admin' or 'resident'
+              timestamp: dt.getTime(),
+              date: dateStr
+          });
+          await db.collection("occurrences").doc(id).update({ 
+              replies,
+              status: role === 'admin' ? 'in_review' : data.status
+          });
+      },
+
+      resolveOccurrence: async (id) => {
+          await db.collection("occurrences").doc(id).update({ 
+              status: 'resolved'
+          });
+      },
+
+      listenToOccurrences: (callback, residentId = null) => {
+          let query = db.collection("occurrences");
+          if (residentId) {
+              query = query.where("residentId", "==", residentId);
+          }
+          // Remove orderBy from server to avoid index issues, sort in client
+          return query.onSnapshot(snapshot => {
+              const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+              callback(items);
+          }, error => {
+              console.error("Erro no listener de ocorrências:", error);
+          });
       },
 
       // --- STATS / DASHBOARD ---

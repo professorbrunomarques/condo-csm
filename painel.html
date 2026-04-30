@@ -60,6 +60,9 @@
             <li><a href="#" class="nav-item" data-target="maintenance">
                     <i data-lucide="wrench"></i> Manutenções
                 </a></li>
+            <li><a href="#" class="nav-item" data-target="occurrences">
+                    <i data-lucide="book-open"></i> Ocorrências
+                </a></li>
             <li><a href="#" class="nav-item" data-target="packages">
                     <i data-lucide="package"></i> Encomendas
                 </a></li>
@@ -257,7 +260,10 @@
                         </table>
                     </div>
 
-                    <div class="section-card glass" style="display: flex; flex-direction: column;">
+                </div>
+
+                <div class="dashboard-sections" style="margin-top: 2rem;">
+                    <div class="section-card glass" style="display: flex; flex-direction: column; width: 100%;">
                         <div class="section-header" style="justify-content: space-between; align-items: center;">
                             <h2 class="section-title" style="margin-bottom:0;">Unidades (Apartamentos)</h2>
                             <div style="display: flex; gap: 10px; align-items: center;">
@@ -405,6 +411,37 @@
                         </h3>
                         <div class="notice-list" id="maint-done" style="opacity: 0.6;">
                             <!-- Dinamico -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OCORRÊNCIAS VIEW -->
+            <div id="occurrences" class="page-view">
+                <div class="page-header">
+                    <h1 class="page-title">Livro de Ocorrências</h1>
+                </div>
+                <div class="dashboard-sections" style="grid-template-columns: 1fr;">
+                    <div class="section-card glass" style="width: 100%;">
+                        <div class="section-header" style="flex-direction: column; align-items: flex-start; gap: 1rem;">
+                            <h2 class="section-title">Relatos dos Moradores</h2>
+                            <div class="occ-controls" style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-bottom: 1px solid var(--surface-border); padding-bottom: 10px; flex-wrap: wrap; gap: 1rem;">
+                                <div class="tabs-container" style="display: flex; gap: 10px;">
+                                    <button class="btn btn-outline occ-filter-btn active" data-status="all" style="padding: 6px 15px; font-size: 0.85rem;">Todas</button>
+                                    <button class="btn btn-outline occ-filter-btn" data-status="open" style="padding: 6px 15px; font-size: 0.85rem;">Abertas</button>
+                                    <button class="btn btn-outline occ-filter-btn" data-status="in_review" style="padding: 6px 15px; font-size: 0.85rem;">Em Análise</button>
+                                    <button class="btn btn-outline occ-filter-btn" data-status="resolved" style="padding: 6px 15px; font-size: 0.85rem;">Concluídas</button>
+                                </div>
+                                <div class="search-box" style="position: relative; flex: 1; max-width: 300px;">
+                                    <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; color: var(--text-muted);"></i>
+                                    <input type="text" id="occ-search-input" placeholder="Pesquisar por morador, título..." 
+                                        style="padding-left: 35px; height: 36px; font-size: 0.85rem; width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="admin-occurrences-list" style="display: flex; flex-direction: column; gap: 20px; margin-top: 20px;">
+                            <!-- Dinâmico -->
+                            <p style="color: var(--text-muted);">Carregando ocorrências...</p>
                         </div>
                     </div>
                 </div>

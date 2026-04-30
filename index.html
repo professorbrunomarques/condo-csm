@@ -125,6 +125,9 @@
               <button class="tab-btn px-3 py-2 text-sm rounded-lg text-slate-600 dark:text-slate-300" data-tab="packages">
                 <span class="material-symbols-outlined mr-1 text-base">package_2</span>Encomendas
               </button>
+              <button class="tab-btn px-3 py-2 text-sm rounded-lg text-slate-600 dark:text-slate-300" data-tab="occurrences">
+                <span class="material-symbols-outlined mr-1 text-base">menu_book</span>Ocorrências
+              </button>
             </div>
 
             <div id="tab-notices" class="tab-pane mt-4">
@@ -140,6 +143,14 @@
 
             <div id="tab-packages" class="tab-pane mt-4 hidden">
               <div id="morador-packages" class="space-y-3"></div>
+            </div>
+
+            <div id="tab-occurrences" class="tab-pane mt-4 hidden">
+              <div id="morador-occurrences" class="space-y-3"></div>
+              <button id="btn-open-occurrence" class="mt-4 w-full lg:w-auto px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold">
+                Registrar Ocorrência
+              </button>
+            </div>
             </div>
           </div>
         </div>
@@ -221,7 +232,47 @@
       document.getElementById('morador-name').textContent = `Olá, ${loggedResident.name.split(' ')[0]}`;
       document.getElementById('morador-unit').textContent = loggedResident.unitDisplay;
 
+      // Initial Fetch & Start Listeners
       const notices = await window.BackendAPI.getNotices();
+      renderNotices(notices);
+
+      const maint = await window.BackendAPI.getMaintenance();
+      renderCalls(maint);
+
+      const parcels = await window.BackendAPI.getParcels();
+      const myParcels = parcels.filter(p => p.residentId === loggedResident.id);
+      renderParcels(myParcels);
+
+      const occurrences = await window.BackendAPI.getResidentOccurrences(loggedResident.id);
+      console.log("Initial occurrences fetch:", occurrences.length);
+      renderOccurrences(occurrences);
+
+      // Start Real-time Listeners
+      window.BackendAPI.listenToNotices((newNotices) => {
+        console.log("🔔 Real-time notice update");
+        renderNotices(newNotices);
+      });
+
+      window.BackendAPI.listenToMaintenance((newMaint) => {
+        console.log("🛠️ Real-time maintenance update");
+        renderCalls(newMaint);
+      });
+
+      window.BackendAPI.listenToParcels((newParcels) => {
+        console.log("📦 Real-time parcel update");
+        const filtered = newParcels.filter(p => p.residentId === loggedResident.id);
+        renderParcels(filtered);
+      });
+
+      window.BackendAPI.listenToOccurrences((newOccurrences) => {
+        console.log("📖 Real-time occurrence update", newOccurrences.length);
+        renderOccurrences(newOccurrences);
+      }, loggedResident.id);
+
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function renderNotices(notices) {
       setMetric('stat-notices', notices.length);
       document.getElementById('morador-notices').innerHTML = notices.map(n => `
         <article class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/60">
@@ -233,14 +284,15 @@
           <p class="text-xs text-slate-400 mt-2">${n.date || ''}</p>
         </article>
       `).join('') || `<p class="text-sm text-slate-500">Nenhum aviso no momento.</p>`;
-
-      await loadCalls();
-      await loadPackages();
-      if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     async function loadCalls() {
       const maint = await window.BackendAPI.getMaintenance();
+      renderCalls(maint);
+    }
+
+    function renderCalls(maint) {
+      if (!loggedResident) return;
       const myCalls = maint.filter(m => m.location.includes(loggedResident.unitDisplay) || m.location === String(loggedResident.id));
       const openCalls = myCalls.filter(c => c.status === 'open' || c.status === 'progress').length;
       setMetric('stat-calls-open', openCalls);
@@ -265,8 +317,8 @@
       }).join('') || `<p class="text-sm text-slate-500">Você não tem chamados.</p>`;
     }
 
-    async function loadPackages() {
-      const parcels = await window.BackendAPI.getResidentParcels(loggedResident.id);
+    function renderParcels(parcels) {
+      if (!loggedResident) return;
       setMetric('stat-packages-pending', parcels.filter(p => p.status === 'pending').length);
 
       document.getElementById('morador-packages').innerHTML = parcels.map(p => `
@@ -291,6 +343,155 @@
         });
       });
     }
+
+    function renderOccurrences(occurrences) {
+      console.log("Rendering occurrences:", occurrences);
+      if (!loggedResident) return;
+      
+      const listEl = document.getElementById('morador-occurrences');
+      listEl.innerHTML = occurrences.map(o => {
+        const statusLabel = o.status === 'resolved' ? 'RESOLVIDA' : o.status === 'in_review' ? 'EM ANÁLISE' : 'ABERTA';
+        const statusColor = o.status === 'resolved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-300' : o.status === 'in_review' ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
+        const isResolved = o.status === 'resolved';
+        
+        const repliesHtml = (o.replies || []).map(r => {
+          const isAdmin = r.role === 'admin';
+          return `
+            <div class="flex flex-col ${isAdmin ? 'items-start' : 'items-end'} mb-2">
+              <div class="max-w-[85%] p-2.5 rounded-2xl text-xs ${isAdmin ? 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-tl-none' : 'bg-brand-600 text-white rounded-tr-none'}">
+                <p class="font-bold mb-1 opacity-70">${isAdmin ? (r.from || 'Administração') : 'Você'} • ${r.date}</p>
+                <p class="leading-relaxed">${r.text}</p>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <article class="rounded-2xl border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/40 mb-4">
+            <div class="flex justify-between items-start gap-3">
+              <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100">${o.title}</h4>
+              <span class="text-[10px] px-2 py-1 rounded-full font-bold whitespace-nowrap ${statusColor}">${statusLabel}</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">${o.date}</p>
+            <div class="mt-3 p-3 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${o.description}</p>
+                ${o.mediaDataUrl ? `<img src="${o.mediaDataUrl}" class="mt-3 w-full max-h-60 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-zoom-in" onclick="window.open('${o.mediaDataUrl}', '_blank')">` : ''}
+            </div>
+            
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
+              <p class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest">Histórico de Mensagens</p>
+              <div class="space-y-1">
+                ${repliesHtml || '<p class="text-xs text-slate-400 text-center py-2 italic">Aguardando primeira resposta da administração...</p>'}
+              </div>
+            </div>
+
+            ${!isResolved ? `
+              <div class="mt-4 flex gap-2">
+                <input type="text" id="res-reply-input-${o.id}" placeholder="Escreva uma mensagem..." 
+                  class="flex-1 text-sm rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2">
+                <button class="btn-res-reply px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold" data-id="${o.id}">
+                  Enviar
+                </button>
+              </div>
+            ` : `
+              <div class="mt-4 p-2 text-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-widest">
+                Ocorrência Resolvida
+              </div>
+            `}
+          </article>
+        `;
+      }).join('') || `<p class="text-sm text-slate-500 text-center py-8">Nenhuma ocorrência registrada.</p>`;
+
+      // Bind buttons
+      document.querySelectorAll('.btn-res-reply').forEach(btn => {
+        btn.onclick = async () => {
+          const id = btn.dataset.id;
+          const input = document.getElementById(`res-reply-input-${id}`);
+          const text = input.value.trim();
+          if (!text) return;
+          
+          btn.disabled = true;
+          await window.BackendAPI.replyToOccurrence(id, text, loggedResident.name, 'resident');
+          input.value = '';
+          btn.disabled = false;
+        };
+      });
+    }
+
+    async function openOccurrenceModal() {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 bg-black/60 z-[9999] grid place-items-center p-3';
+        overlay.innerHTML = `
+          <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4">
+            <h3 class="font-bold text-lg mb-3">Registrar Ocorrência</h3>
+            
+            <label class="text-xs text-slate-500 block">Título</label>
+            <input id="occ-title" type="text" placeholder="Assunto da ocorrência" 
+              class="mt-1 w-full rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm">
+
+            <label class="text-xs text-slate-500 block mt-3">Anexar Foto/Vídeo</label>
+            <input id="occ-media" type="file" accept="image/*,video/*" capture="environment" class="hidden">
+            <label for="occ-media" class="mt-1 w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 cursor-pointer text-sm font-semibold">
+              <span class="material-symbols-outlined text-base">photo_camera</span>
+              Câmera / Galeria
+            </label>
+            <div id="occ-media-name" class="text-xs text-slate-500 mt-2">Nenhum arquivo selecionado</div>
+
+            <label class="text-xs text-slate-500 block mt-3">Descrição Detalhada</label>
+            <textarea id="occ-desc" rows="4" placeholder="Relate o que aconteceu..."
+              class="mt-1 w-full rounded-xl border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"></textarea>
+            
+            <div class="flex gap-2 mt-4">
+              <button id="occ-cancel" class="flex-1 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm">Cancelar</button>
+              <button id="occ-save" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white font-semibold text-sm">Registrar</button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+
+        const close = (value = null) => { overlay.remove(); resolve(value); };
+        overlay.querySelector('#occ-cancel').onclick = () => close(null);
+        
+        let mediaDataUrl = '';
+        const inputFile = overlay.querySelector('#occ-media');
+        const mediaName = overlay.querySelector('#occ-media-name');
+
+        inputFile.onchange = async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          mediaName.textContent = file.name;
+          if (file.type.startsWith('image/')) {
+            mediaDataUrl = await resizeImage(await readImageAsDataUrl(file), 960, 0.7);
+          } else {
+            // For videos, we'd need a different approach for resizing, 
+            // but for this mock let's just read it as data URL if small or just keep name
+            mediaDataUrl = await readImageAsDataUrl(file);
+          }
+        };
+
+        overlay.querySelector('#occ-save').onclick = () => {
+          const title = overlay.querySelector('#occ-title').value.trim();
+          const description = overlay.querySelector('#occ-desc').value.trim();
+          if (!title || !description) return alert("Preencha título e descrição.");
+          close({ title, description, mediaDataUrl });
+        };
+      });
+    }
+
+    document.getElementById('btn-open-occurrence')?.addEventListener('click', async () => {
+      const payload = await openOccurrenceModal();
+      if (payload) {
+        await window.BackendAPI.addOccurrence(
+          loggedResident.id, 
+          loggedResident.name, 
+          loggedResident.unitDisplay, 
+          payload.title, 
+          payload.description, 
+          payload.mediaDataUrl
+        );
+        alert("Ocorrência registrada com sucesso.");
+      }
+    });
 
     function openParcelDetailsModal(parcel) {
       const overlay = document.createElement('div');

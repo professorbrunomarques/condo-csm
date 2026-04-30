@@ -181,6 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (targetId === 'dashboard') loadDashboardStats();
                     if (targetId === 'maintenance') loadMaintenance();
                     if (targetId === 'packages') loadPackages();
+                    if (targetId === 'occurrences') renderAdminOccurrences(currentOccurrences);
                     if (targetId === 'org') loadOrg();
                     if (targetId === 'portal') loadPortalSim();
                     if (targetId === 'users') loadUsers();
@@ -201,6 +202,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentResidents = []; // Cache for filtering & exporting
     let currentUnits = []; // Cache for unit filtering
     let currentParcels = [];
+    let currentOccurrences = [];
+    let currentOccFilter = 'all';
+    let currentOccSearch = '';
     let currentVehicleResidentId = '';
     let currentVehicles = [];
     let editingResidentId = '';
@@ -372,32 +376,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Load Admin Notices
             const notices = await API.getNotices();
-            const noticesList = document.getElementById('admin-notices-list');
-            if (noticesList) {
-                noticesList.innerHTML = notices.map(n => `
-                    <div class="notice-item" style="display:flex; justify-content:space-between; align-items:center; border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
-                        <div>
-                            <span style="font-size: 0.75rem; color: var(--text-muted);">${n.date}</span>
-                            <div class="notice-title" style="margin-top:4px; font-weight:bold;">${n.title}</div>
-                            <div style="font-size:0.85rem; color: #ccc; margin-top:5px;">${n.content}</div>
-                        </div>
-                        <button class="btn btn-outline btn-del-notice" data-id="${n.id}" style="padding:4px 8px; color:var(--danger); border-color: rgba(239,68,68,0.3);"><i data-lucide="trash-2" style="width:14px;"></i></button>
-                    </div>
-                `).join('') || `<p style="color:var(--text-muted)">Nenhum aviso publicado.</p>`;
-
-                lucide.createIcons();
-                document.querySelectorAll('.btn-del-notice').forEach(btn => btn.addEventListener('click', async (e) => {
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (confirm("Excluir este aviso? Ele sumirá dos portais de todos os moradores.")) {
-                        await API.deleteNotice(id);
-                        loadDashboardStats();
-                    }
-                }));
-            }
+            renderNotices(notices);
         } catch (error) {
             console.error("Erro ao carregar estatísticas:", error);
         }
         refreshNotifications();
+    }
+
+    function renderNotices(notices) {
+        const noticesList = document.getElementById('admin-notices-list');
+        if (!noticesList) return;
+
+        noticesList.innerHTML = notices.map(n => `
+            <div class="notice-item" style="display:flex; justify-content:space-between; align-items:center; border-left-color: var(--${n.type === 'warning' ? 'warning' : 'info'});">
+                <div>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">${n.date}</span>
+                    <div class="notice-title" style="margin-top:4px; font-weight:bold;">${n.title}</div>
+                    <div style="font-size:0.85rem; color: #ccc; margin-top:5px;">${n.content}</div>
+                </div>
+                <button class="btn btn-outline btn-del-notice" data-id="${n.id}" style="padding:4px 8px; color:var(--danger); border-color: rgba(239,68,68,0.3);"><i data-lucide="trash-2" style="width:14px;"></i></button>
+            </div>
+        `).join('') || `<p style="color:var(--text-muted)">Nenhum aviso publicado.</p>`;
+
+        lucide.createIcons();
+        document.querySelectorAll('.btn-del-notice').forEach(btn => btn.addEventListener('click', async (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            if (confirm("Excluir este aviso? Ele sumirá dos portais de todos os moradores.")) {
+                await API.deleteNotice(id);
+                // loadDashboardStats will be triggered by listener
+            }
+        }));
     }
 
     // --- NOTICE MODAL LOGIC ---
@@ -858,73 +866,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         const maintProgress = document.getElementById('maint-progress');
         const maintDone = document.getElementById('maint-done');
 
-        maintOpen.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
-        maintProgress.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
-        maintDone.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
+        if (maintOpen) maintOpen.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
+        if (maintProgress) maintProgress.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
+        if (maintDone) maintDone.innerHTML = '<div style="opacity:0.5; font-size: 0.8rem;">Carregando...</div>';
 
         try {
             const calls = await API.getMaintenance();
-            let htmlOpen = '', htmlProgress = '', htmlDone = '';
-            let countOpen = 0, countProgress = 0, countDone = 0;
-
-            calls.forEach(call => {
-                let controls = '';
-                if (call.status === 'open') {
-                    controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-right-circle" style="width: 16px;"></i></button>`;
-                } else if (call.status === 'progress') {
-                    controls = `
-                    <div style="display:flex; gap: 8px;">
-                        <button class="btn-move" data-id="${call.id}" data-to="open" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-left-circle" style="width: 16px;"></i></button>
-                        <button class="btn-move" data-id="${call.id}" data-to="done" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="check-circle" style="width: 16px;"></i></button>
-                    </div>`;
-                } else if (call.status === 'done') {
-                    controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="corner-down-left" style="width: 16px;"></i></button>`;
-                }
-
-                const itemHtml = `
-                    <div class="notice-item" style="display:flex; justify-content: space-between; align-items:flex-end;">
-                        <div>
-                            <span style="font-size: 0.75rem; color: var(--text-muted);">${call.location}</span>
-                            <div class="notice-title" style="margin-top:4px;">${call.title}</div>
-                        </div>
-                        <div>${controls}</div>
-                    </div>
-                `;
-                if (call.status === 'open') { htmlOpen += itemHtml; countOpen++; }
-                if (call.status === 'progress') { htmlProgress += itemHtml; countProgress++; }
-                if (call.status === 'done') { htmlDone += itemHtml; countDone++; }
-            });
-
-            maintOpen.innerHTML = htmlOpen || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
-            maintProgress.innerHTML = htmlProgress || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
-            maintDone.innerHTML = htmlDone || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
-
-            document.getElementById('badge-open').textContent = countOpen;
-            document.getElementById('badge-progress').textContent = countProgress;
-            document.getElementById('badge-done').textContent = countDone;
-
-            const iconElements = maintOpen.querySelectorAll('[data-lucide]');
-            const progressIcons = maintProgress.querySelectorAll('[data-lucide]');
-            const doneIcons = maintDone.querySelectorAll('[data-lucide]');
-
-            [...iconElements, ...progressIcons, ...doneIcons].forEach(el => lucide.createIcons({ name: el.getAttribute('data-lucide') }));
-            lucide.createIcons();
-
-            document.querySelectorAll('.btn-move').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const btnEl = e.currentTarget;
-                    btnEl.style.opacity = 0.5;
-                    const id = btnEl.getAttribute('data-id');
-                    const to = btnEl.getAttribute('data-to');
-                    await API.updateMaintenanceStatus(id, to);
-                    loadMaintenance();
-                    loadDashboardStats();
-                });
-            });
-
+            renderMaintenanceCalls(calls);
         } catch (error) {
             console.error("Erro ao carregar manutenções:", error);
         }
+    }
+
+    function renderMaintenanceCalls(calls) {
+        const maintOpen = document.getElementById('maint-open');
+        const maintProgress = document.getElementById('maint-progress');
+        const maintDone = document.getElementById('maint-done');
+        if (!maintOpen || !maintProgress || !maintDone) return;
+
+        let htmlOpen = '', htmlProgress = '', htmlDone = '';
+        let countOpen = 0, countProgress = 0, countDone = 0;
+
+        calls.forEach(call => {
+            let controls = '';
+            if (call.status === 'open') {
+                controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-right-circle" style="width: 16px;"></i></button>`;
+            } else if (call.status === 'progress') {
+                controls = `
+                <div style="display:flex; gap: 8px;">
+                    <button class="btn-move" data-id="${call.id}" data-to="open" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="arrow-left-circle" style="width: 16px;"></i></button>
+                    <button class="btn-move" data-id="${call.id}" data-to="done" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="check-circle" style="width: 16px;"></i></button>
+                </div>`;
+            } else if (call.status === 'done') {
+                controls = `<button class="btn-move" data-id="${call.id}" data-to="progress" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px;"><i data-lucide="corner-down-left" style="width: 16px;"></i></button>`;
+            }
+
+            const itemHtml = `
+                <div class="notice-item" style="display:flex; justify-content: space-between; align-items:flex-end;">
+                    <div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${call.location}</span>
+                        <div class="notice-title" style="margin-top:4px;">${call.title}</div>
+                    </div>
+                    <div>${controls}</div>
+                </div>
+            `;
+            if (call.status === 'open') { htmlOpen += itemHtml; countOpen++; }
+            if (call.status === 'progress') { htmlProgress += itemHtml; countProgress++; }
+            if (call.status === 'done') { htmlDone += itemHtml; countDone++; }
+        });
+
+        maintOpen.innerHTML = htmlOpen || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
+        maintProgress.innerHTML = htmlProgress || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
+        maintDone.innerHTML = htmlDone || '<div class="notice-item" style="opacity:0.5; border:none;">Vazio</div>';
+
+        document.getElementById('badge-open').textContent = countOpen;
+        document.getElementById('badge-progress').textContent = countProgress;
+        document.getElementById('badge-done').textContent = countDone;
+
+        lucide.createIcons();
+
+        document.querySelectorAll('.btn-move').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const btnEl = e.currentTarget;
+                btnEl.style.opacity = 0.5;
+                const id = btnEl.getAttribute('data-id');
+                const to = btnEl.getAttribute('data-to');
+                await API.updateMaintenanceStatus(id, to);
+                loadMaintenance();
+                loadDashboardStats();
+            });
+        });
     }
 
     async function loadPackages() {
@@ -941,8 +952,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 API.getParcels()
             ]);
 
-            currentParcels = parcels;
-
             if (residentSelect) {
                 const currentValue = residentSelect.value;
                 residentSelect.innerHTML = '<option value="">Selecione o morador...</option>' +
@@ -950,107 +959,321 @@ document.addEventListener('DOMContentLoaded', async () => {
                 residentSelect.value = currentValue || '';
             }
 
-            const pending = parcels.filter(parcel => parcel.status === 'pending');
-            const delivered = parcels.filter(parcel => parcel.status === 'delivered');
-
-            document.getElementById('packages-pending-count').textContent = pending.length;
-            document.getElementById('packages-delivered-count').textContent = delivered.length;
-            const summaryBadge = document.getElementById('packages-summary-badge');
-            if (summaryBadge) summaryBadge.textContent = `${pending.length} aguardando retirada`;
-
-            if (pendingList) {
-                pendingList.innerHTML = pending.map(parcel => `
-                    <div class="notice-item" style="border-left-color: var(--warning);">
-                        <div style="display:flex; gap:12px; align-items:flex-start;">
-                            ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda de ${parcel.residentName}" style="width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--surface-border);">` : ''}
-                            <div style="flex:1;">
-                                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
-                                    <div>
-                                        <div class="notice-title">${parcel.residentName}</div>
-                                        <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay} • Recebida em ${parcel.receivedAtLabel}</span>
-                                    </div>
-                                    <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:${parcel.notificationStatus === 'sent' ? 'rgba(34,197,94,0.18)' : 'rgba(245,158,11,0.18)'}; color:${parcel.notificationStatus === 'sent' ? 'var(--success)' : 'var(--warning)'};">
-                                        ${parcel.notificationStatus === 'sent' ? 'WhatsApp enviado' : 'Notificação pendente'}
-                                    </span>
-                                </div>
-                                <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
-                                    ${parcel.carrier ? `<div>Transportadora: ${parcel.carrier}</div>` : ''}
-                                    ${parcel.trackingCode ? `<div>Referência: ${parcel.trackingCode}</div>` : ''}
-                                    ${parcel.notes ? `<div>Obs.: ${parcel.notes}</div>` : ''}
-                                </div>
-                                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-                                    <button class="btn btn-outline btn-parcel-whatsapp" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem;"><i data-lucide="message-circle" style="width:14px;"></i> WhatsApp</button>
-                                    <button class="btn btn-outline btn-parcel-deliver" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem; color:var(--success); border-color: rgba(34,197,94,0.35);"><i data-lucide="check-circle" style="width:14px;"></i> Dar baixa</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda pendente.</div>';
-            }
-
-            if (deliveredList) {
-                deliveredList.innerHTML = delivered.map(parcel => `
-                    <div class="notice-item" style="border-left-color: var(--success);">
-                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
-                            <div>
-                                <div class="notice-title">${parcel.residentName}</div>
-                                <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay}</span>
-                                <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
-                                    Recebida em ${parcel.receivedAtLabel}<br>
-                                    Entregue em ${parcel.deliveredAtLabel || 'Data não informada'}
-                                </div>
-                            </div>
-                            <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:rgba(34,197,94,0.18); color:var(--success);">
-                                Baixada por ${parcel.deliveredBy || 'funcionário'}
-                            </span>
-                        </div>
-                    </div>
-                `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda entregue ainda.</div>';
-            }
-
-            lucide.createIcons();
-
-            document.querySelectorAll('.btn-parcel-whatsapp').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const parcelId = e.currentTarget.getAttribute('data-id');
-                    const parcel = currentParcels.find(item => item.id === parcelId);
-                    if (!parcel) return;
-
-                    const phone = formatPhoneForWhatsApp(parcel.residentPhone);
-                    if (!phone) {
-                        alert('Este morador não possui telefone cadastrado.');
-                        return;
-                    }
-
-                    const message = encodeURIComponent(buildParcelWhatsAppMessage(parcel));
-                    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
-                    await API.markParcelNotified(parcelId);
-                    loadPackages();
-                    refreshNotifications();
-                });
-            });
-
-            document.querySelectorAll('.btn-parcel-deliver').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const parcelId = e.currentTarget.getAttribute('data-id');
-                    const sessionUser = API.checkSession();
-                    if (!confirm('Confirmar a baixa desta encomenda como entregue ao morador?')) return;
-
-                    await API.markParcelDelivered(parcelId, sessionUser?.name || 'Funcionário');
-                    loadPackages();
-                    loadDashboardStats();
-                    const selectedResident = document.getElementById('sim-resident-select')?.value;
-                    if (selectedResident) {
-                        document.getElementById('sim-resident-select').dispatchEvent(new Event('change'));
-                    }
-                    refreshNotifications();
-                });
-            });
+            renderParcels(parcels);
         } catch (error) {
             console.error('Erro ao carregar encomendas:', error);
             if (pendingList) pendingList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Erro ao carregar encomendas.</div>';
             if (deliveredList) deliveredList.innerHTML = '<div class="notice-item" style="opacity:0.5; border:none;">Erro ao carregar histórico.</div>';
         }
+    }
+
+    function renderParcels(parcels) {
+        currentParcels = parcels;
+        const pendingList = document.getElementById('packages-pending-list');
+        const deliveredList = document.getElementById('packages-delivered-list');
+
+        const pending = parcels.filter(parcel => parcel.status === 'pending');
+        const delivered = parcels.filter(parcel => parcel.status === 'delivered');
+
+        const pendingCountEl = document.getElementById('packages-pending-count');
+        const deliveredCountEl = document.getElementById('packages-delivered-count');
+        if (pendingCountEl) pendingCountEl.textContent = pending.length;
+        if (deliveredCountEl) deliveredCountEl.textContent = delivered.length;
+
+        const summaryBadge = document.getElementById('packages-summary-badge');
+        if (summaryBadge) summaryBadge.textContent = `${pending.length} aguardando retirada`;
+
+        if (pendingList) {
+            pendingList.innerHTML = pending.map(parcel => `
+                <div class="notice-item" style="border-left-color: var(--warning);">
+                    <div style="display:flex; gap:12px; align-items:flex-start;">
+                        ${parcel.photoDataUrl ? `<img src="${parcel.photoDataUrl}" alt="Encomenda de ${parcel.residentName}" style="width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--surface-border);">` : ''}
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                                <div>
+                                    <div class="notice-title">${parcel.residentName}</div>
+                                    <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay} • Recebida em ${parcel.receivedAtLabel}</span>
+                                </div>
+                                <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:${parcel.notificationStatus === 'sent' ? 'rgba(34,197,94,0.18)' : 'rgba(245,158,11,0.18)'}; color:${parcel.notificationStatus === 'sent' ? 'var(--success)' : 'var(--warning)'};">
+                                    ${parcel.notificationStatus === 'sent' ? 'WhatsApp enviado' : 'Notificação pendente'}
+                                </span>
+                            </div>
+                            <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
+                                ${parcel.carrier ? `<div>Transportadora: ${parcel.carrier}</div>` : ''}
+                                ${parcel.trackingCode ? `<div>Referência: ${parcel.trackingCode}</div>` : ''}
+                                ${parcel.notes ? `<div>Obs.: ${parcel.notes}</div>` : ''}
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                                <button class="btn btn-outline btn-parcel-whatsapp" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem;"><i data-lucide="message-circle" style="width:14px;"></i> WhatsApp</button>
+                                <button class="btn btn-outline btn-parcel-deliver" data-id="${parcel.id}" style="padding:6px 10px; font-size:0.8rem; color:var(--success); border-color: rgba(34,197,94,0.35);"><i data-lucide="check-circle" style="width:14px;"></i> Dar baixa</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda pendente.</div>';
+        }
+
+        if (deliveredList) {
+            deliveredList.innerHTML = delivered.map(parcel => `
+                <div class="notice-item" style="border-left-color: var(--success);">
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                        <div>
+                            <div class="notice-title">${parcel.residentName}</div>
+                            <span style="font-size:0.75rem; color: var(--text-muted);">${parcel.unitDisplay}</span>
+                            <div style="font-size:0.84rem; color:#ddd; margin-top:6px;">
+                                Recebida em ${parcel.receivedAtLabel}<br>
+                                Entregue em ${parcel.deliveredAtLabel || 'Data não informada'}
+                            </div>
+                        </div>
+                        <span class="badge" style="position:static; width:auto; height:auto; border-radius:999px; padding:4px 10px; background:rgba(34,197,94,0.18); color:var(--success);">
+                            Baixada por ${parcel.deliveredBy || 'funcionário'}
+                        </span>
+                    </div>
+                </div>
+            `).join('') || '<div class="notice-item" style="opacity:0.5; border:none;">Nenhuma encomenda entregue ainda.</div>';
+        }
+
+        lucide.createIcons();
+
+        document.querySelectorAll('.btn-parcel-whatsapp').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const parcelId = e.currentTarget.getAttribute('data-id');
+                const parcel = currentParcels.find(item => item.id === parcelId);
+                if (!parcel) return;
+
+                const phone = formatPhoneForWhatsApp(parcel.residentPhone);
+                if (!phone) {
+                    alert('Este morador não possui telefone cadastrado.');
+                    return;
+                }
+
+                const message = encodeURIComponent(buildParcelWhatsAppMessage(parcel));
+                window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+                await API.markParcelNotified(parcelId);
+                // Listener will refresh UI
+            });
+        });
+
+        document.querySelectorAll('.btn-parcel-deliver').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const parcelId = e.currentTarget.getAttribute('data-id');
+                const sessionUser = API.checkSession();
+                if (!confirm('Confirmar a baixa desta encomenda como entregue ao morador?')) return;
+
+                await API.markParcelDelivered(parcelId, sessionUser?.name || 'Funcionário');
+                // Listener will refresh UI
+                const selectedResident = document.getElementById('sim-resident-select')?.value;
+                if (selectedResident) {
+                    document.getElementById('sim-resident-select').dispatchEvent(new Event('change'));
+                }
+            });
+        });
+    }
+
+    function renderAdminOccurrences(occurrences) {
+        console.log("Rendering admin occurrences:", occurrences);
+        currentOccurrences = occurrences || [];
+        const list = document.getElementById('admin-occurrences-list');
+        if (!list) return;
+
+        // Filter by status and search query
+        const filtered = currentOccurrences.filter(o => {
+            const matchesStatus = currentOccFilter === 'all' || o.status === currentOccFilter;
+            const q = currentOccSearch.toLowerCase();
+            const matchesSearch = !q || 
+                o.title.toLowerCase().includes(q) || 
+                o.description.toLowerCase().includes(q) || 
+                o.residentName.toLowerCase().includes(q) || 
+                o.unitDisplay.toLowerCase().includes(q);
+            return matchesStatus && matchesSearch;
+        });
+
+        list.innerHTML = filtered.map(o => {
+            const statusLabel = o.status === 'resolved' ? 'RESOLVIDA' : o.status === 'in_review' ? 'EM ANÁLISE' : 'ABERTA';
+            const statusColor = o.status === 'resolved' ? 'var(--success)' : o.status === 'in_review' ? 'var(--warning)' : 'var(--primary)';
+            const isResolved = o.status === 'resolved';
+
+            const repliesHtml = (o.replies || []).map(r => {
+                const isAdmin = r.role === 'admin';
+                return `
+                    <div style="display: flex; flex-direction: column; align-items: ${isAdmin ? 'flex-end' : 'flex-start'}; margin-bottom: 12px;">
+                        <div style="background: ${isAdmin ? 'rgba(var(--primary-rgb), 0.15)' : 'rgba(255,255,255,0.05)'}; 
+                                    padding: 10px 14px; border-radius: 14px; max-width: 85%;
+                                    border-${isAdmin ? 'top-right' : 'top-left'}-radius: 2px;
+                                    border: 1px solid ${isAdmin ? 'var(--primary-light)' : 'var(--surface-border)'};">
+                            <div style="font-size: 0.7rem; font-weight: bold; color: ${isAdmin ? 'var(--primary-light)' : 'var(--text-muted)'}; margin-bottom: 4px;">
+                                ${r.from} • ${r.date}
+                            </div>
+                            <div style="font-size: 0.85rem; line-height: 1.4;">${r.text}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="section-card glass" style="border-left: 4px solid ${statusColor}; margin-bottom: 25px; transition: all 0.3s ease;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 15px;">
+                        <div style="flex: 1;">
+                            <h3 style="margin:0; font-size:1.1rem; color: var(--primary-light);">${o.title}</h3>
+                            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="user" style="width: 14px;"></i> <strong>${o.residentName} (${o.unitDisplay})</strong> 
+                                <span style="opacity: 0.5;">•</span> 
+                                <i data-lucide="calendar" style="width: 14px;"></i> ${o.date}
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            <span class="badge" style="position:static; width:auto; height:auto; padding:5px 12px; border-radius:30px; background:${statusColor}22; color:${statusColor}; border:1px solid ${statusColor}44; font-weight: bold; font-size: 0.75rem;">
+                                ${statusLabel}
+                            </span>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-outline btn-print-occ" data-id="${o.id}" title="Gerar PDF para Impressão" style="padding: 6px; border-radius: 8px;">
+                                    <i data-lucide="printer" style="width: 16px;"></i>
+                                </button>
+                                ${!isResolved ? `
+                                    <button class="btn btn-outline btn-resolve-occ" data-id="${o.id}" style="padding: 6px 12px; font-size: 0.75rem; border-color: var(--success); color: var(--success);">
+                                        <i data-lucide="check-circle" style="width: 14px; margin-right: 4px;"></i> Concluir
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid var(--surface-border); margin-bottom: 20px;">
+                        <p style="margin:0; font-size:0.95rem; line-height:1.6; white-space: pre-wrap;">${o.description}</p>
+                        ${o.mediaDataUrl ? `
+                            <div style="margin-top:15px; cursor: pointer;" onclick="window.open('${o.mediaDataUrl}', '_blank')">
+                                <img src="${o.mediaDataUrl}" style="max-width:100%; max-height:400px; border-radius:12px; border:1px solid var(--surface-border); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+                                <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;"><i data-lucide="maximize" style="width: 10px;"></i> Clique para ampliar</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div style="margin-top:20px; border-top:1px dashed var(--surface-border); padding-top:20px;">
+                        <div style="font-size:0.85rem; font-weight:bold; margin-bottom:15px; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="message-square" style="width: 16px;"></i> Histórico de Interações
+                        </div>
+                        <div id="replies-${o.id}" style="margin-bottom: 20px;">
+                            ${repliesHtml || '<p style="font-size:0.85rem; color:var(--text-muted); text-align: center; py: 10px;">Ainda não há interações nesta ocorrência.</p>'}
+                        </div>
+                        
+                        ${!isResolved ? `
+                            <div style="display:flex; gap:10px; background: var(--surface-color); padding: 10px; border-radius: 12px; border: 1px solid var(--surface-border);">
+                                <input type="text" id="reply-input-${o.id}" placeholder="Escreva uma resposta ou ação tomada..." 
+                                    style="flex:1; font-size:0.9rem; background: transparent; border: none; outline: none; padding: 5px;">
+                                <button class="btn btn-reply-occ" data-id="${o.id}" style="padding: 8px 18px; font-size:0.85rem; border-radius: 8px;">
+                                    Responder
+                                </button>
+                            </div>
+                        ` : `
+                            <div style="text-align: center; padding: 10px; background: rgba(var(--success-rgb), 0.1); border-radius: 8px; color: var(--success); font-size: 0.85rem; font-weight: 500;">
+                                <i data-lucide="lock" style="width: 14px; vertical-align: middle; margin-right: 5px;"></i> Ocorrência finalizada. Chat encerrado.
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('') || '<p style="color:var(--text-muted); text-align: center; padding: 40px;">Nenhuma ocorrência registrada no livro.</p>';
+
+        lucide.createIcons();
+
+        // Bind buttons
+        document.querySelectorAll('.btn-reply-occ').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const text = document.getElementById(`reply-input-${id}`).value.trim();
+                if (!text) return;
+
+                const sessionUser = API.checkSession();
+                await API.replyToOccurrence(id, text, sessionUser?.name || 'Administrador', 'admin');
+                // Listener will refresh UI
+            });
+        });
+
+        document.querySelectorAll('.btn-resolve-occ').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (!confirm('Deseja marcar esta ocorrência como RESOLVIDA? O chat será encerrado.')) return;
+                await API.resolveOccurrence(id);
+                // Listener will refresh UI
+            });
+        });
+
+        document.querySelectorAll('.btn-print-occ').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                const occurrence = currentOccurrences.find(o => o.id === id);
+                if (occurrence) printOccurrence(occurrence);
+            });
+        });
+    }
+
+    function printOccurrence(occ) {
+        const printWindow = window.open('', '_blank');
+        const repliesHtml = (occ.replies || []).map(r => `
+            <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 8px; background: ${r.role === 'admin' ? '#f9f9f9' : '#fff'}">
+                <div style="font-size: 10px; font-weight: bold; color: #666; margin-bottom: 5px;">${r.from} • ${r.date}</div>
+                <div style="font-size: 13px;">${r.text}</div>
+            </div>
+        `).join('');
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Ocorrência #${occ.id.substring(0,6)}</title>
+                <style>
+                    body { font-family: sans-serif; line-height: 1.5; color: #333; padding: 40px; }
+                    .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 30px; display: flex; justify-content: space-between; }
+                    .title { font-size: 24px; font-weight: bold; margin: 0; }
+                    .meta { font-size: 12px; color: #666; margin-top: 5px; }
+                    .section { margin-bottom: 30px; }
+                    .section-title { font-size: 16px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; }
+                    .content { font-size: 14px; white-space: pre-wrap; }
+                    .badge { padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 11px; text-transform: uppercase; }
+                    img { max-width: 100%; border-radius: 8px; margin-top: 10px; }
+                    @media print { .no-print { display: none; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <p class="title">${occ.title}</p>
+                        <p class="meta">Protocolo: #${occ.id.toUpperCase()} | Data: ${occ.date}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge">${occ.status.toUpperCase()}</span>
+                        <p class="meta">${occ.residentName} (${occ.unitDisplay})</p>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">RELATO DO MORADOR</div>
+                    <div class="content">${occ.description}</div>
+                    ${occ.mediaDataUrl ? `<img src="${occ.mediaDataUrl}">` : ''}
+                </div>
+
+                <div class="section">
+                    <div class="section-title">HISTÓRICO DE RESPOSTAS E AÇÕES</div>
+                    ${repliesHtml || '<p style="color:#999; font-size:12px;">Nenhuma resposta registrada.</p>'}
+                </div>
+
+                <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; font-size: 10px; color: #999; text-align: center;">
+                    Documento gerado eletronicamente pelo Sistema CondoManager - ${new Date().toLocaleString()}
+                </div>
+                
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                            // window.close(); // Opcional
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `;
+        printWindow.document.write(html);
+        printWindow.document.close();
     }
 
     // --- MODAL LOGIC (RESIDENTS) ---
@@ -1685,6 +1908,90 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (currentUser) {
         loadDashboardStats();
         loadMaintenance();
+
+        // Real-time listener for maintenance calls
+        API.listenToMaintenance((calls) => {
+            console.log("🔄 Real-time maintenance update received");
+            
+            // 1. Update maintenance view if it's currently active
+            const maintenanceView = document.getElementById('maintenance');
+            if (maintenanceView && maintenanceView.classList.contains('active')) {
+                renderMaintenanceCalls(calls);
+            }
+            
+            // 2. Update dashboard open calls count
+            const statOpenCalls = document.getElementById('stat-opencalls');
+            if (statOpenCalls) {
+                const openCount = calls.filter(c => c.status === 'open').length;
+                statOpenCalls.textContent = openCount;
+            }
+            
+            // 3. Refresh notifications badge and list
+            refreshNotifications();
+        });
+
+        // Real-time listener for parcels
+        API.listenToParcels((parcels) => {
+            console.log("🔄 Real-time parcels update received");
+            
+            // 1. Update packages view if active
+            const packagesView = document.getElementById('packages');
+            if (packagesView && packagesView.classList.contains('active')) {
+                renderParcels(parcels);
+            }
+            
+            // 2. Update dashboard parcels count
+            const pendingParcels = parcels.filter(p => p.status === 'pending').length;
+            const summaryBadge = document.getElementById('packages-summary-badge');
+            if (summaryBadge) summaryBadge.textContent = `${pendingParcels} aguardando retirada`;
+            
+            // 3. Refresh notifications
+            refreshNotifications();
+        });
+
+        // Real-time listener for notices
+        API.listenToNotices((notices) => {
+            console.log("🔄 Real-time notices update received");
+            
+            // 1. Update dashboard view if active
+            const dashboardView = document.getElementById('dashboard');
+            if (dashboardView && dashboardView.classList.contains('active')) {
+                renderNotices(notices);
+            }
+            
+            // 2. Refresh notifications
+            refreshNotifications();
+        });
+
+        // Real-time listener for occurrences
+        console.log("Starting occurrences listener...");
+        API.listenToOccurrences((occurrences) => {
+            console.log("🔄 Real-time occurrences update received (Admin)", occurrences.length);
+            currentOccurrences = occurrences;
+            renderAdminOccurrences(occurrences);
+            
+            // 2. Refresh notifications
+            refreshNotifications();
+        });
+
+        // Occurrences filtering listeners
+        document.querySelectorAll('.occ-filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update buttons UI
+                document.querySelectorAll('.occ-filter-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+
+                // Set filter and render
+                currentOccFilter = e.currentTarget.getAttribute('data-status');
+                renderAdminOccurrences(currentOccurrences);
+            });
+        });
+
+        // Occurrences search listener
+        document.getElementById('occ-search-input')?.addEventListener('input', (e) => {
+            currentOccSearch = e.target.value;
+            renderAdminOccurrences(currentOccurrences);
+        });
     }
 
     // --- HEADER DROPDOWNS LOGIC ---
@@ -1720,13 +2027,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const notices = await API.getNotices();
             const maintenance = await API.getMaintenance();
             const parcels = await API.getParcels();
+            const occurrences = await API.getOccurrences();
             const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
 
             // Combine and format
             let allNotifs = [
                 ...notices.map(n => ({ id: `notice_${n.id}`, title: n.title, text: n.content, date: n.date, icon: 'info', color: 'purple', target: 'dashboard' })),
                 ...maintenance.filter(m => m.status === 'open').map(m => ({ id: `maint_${m.id}`, title: 'Chamado Aberto', text: `${m.title} na ${m.location}`, date: m.displayDate, icon: 'alert-circle', color: 'orange', target: 'maintenance' })),
-                ...parcels.filter(p => p.status === 'pending').map(p => ({ id: `parcel_${p.id}`, title: 'Encomenda aguardando retirada', text: `${p.residentName} • ${p.unitDisplay}`, date: p.receivedAtLabel, icon: 'package', color: 'orange', target: 'packages' }))
+                ...parcels.filter(p => p.status === 'pending').map(p => ({ id: `parcel_${p.id}`, title: 'Encomenda aguardando retirada', text: `${p.residentName} • ${p.unitDisplay}`, date: p.receivedAtLabel, icon: 'package', color: 'orange', target: 'packages' })),
+                ...occurrences.filter(o => o.status === 'open').map(o => ({ id: `occ_${o.id}`, title: 'Nova Ocorrência', text: `${o.title} • ${o.residentName}`, date: o.date, icon: 'book-open', color: 'cyan', target: 'occurrences' }))
             ];
 
             // Filter unread
@@ -1769,12 +2078,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const notices = await API.getNotices();
         const maintenance = await API.getMaintenance();
         const parcels = await API.getParcels();
+        const occurrences = await API.getOccurrences();
         const readIds = JSON.parse(localStorage.getItem('condo_read_notifs') || '[]');
 
         const currentIds = [
             ...notices.map(n => `notice_${n.id}`),
             ...maintenance.map(m => `maint_${m.id}`),
-            ...parcels.map(p => `parcel_${p.id}`)
+            ...parcels.map(p => `parcel_${p.id}`),
+            ...occurrences.map(o => `occ_${o.id}`)
         ];
 
         localStorage.setItem('condo_read_notifs', JSON.stringify([...new Set([...readIds, ...currentIds])]));
