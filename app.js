@@ -1918,9 +1918,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadDashboardStats();
         loadMaintenance();
 
+        let initialLoad = { maintenance: true, parcels: true, notices: true, occurrences: true };
+        let lastCounts = { maintenance: 0, parcels: 0, notices: 0, occurrences: 0 };
+
+        const playNotificationSound = () => {
+            if (localStorage.getItem('condo_sound_enabled') === 'false') return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime); 
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                osc.start();
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.3);
+                osc.stop(ctx.currentTime + 0.3);
+                
+                setTimeout(() => {
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(1108.73, ctx.currentTime); 
+                    gain2.gain.setValueAtTime(0.05, ctx.currentTime);
+                    osc2.start();
+                    gain2.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.4);
+                    osc2.stop(ctx.currentTime + 0.4);
+                }, 150);
+            } catch (e) { console.warn("Audio blocked", e); }
+        };
+
         // Real-time listener for maintenance calls
         API.listenToMaintenance((calls) => {
             console.log("🔄 Real-time maintenance update received");
+            if (!initialLoad.maintenance && calls.length > lastCounts.maintenance) playNotificationSound();
+            lastCounts.maintenance = calls.length;
+            initialLoad.maintenance = false;
             
             // 1. Update maintenance view if it's currently active
             const maintenanceView = document.getElementById('maintenance');
@@ -1942,6 +1978,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Real-time listener for parcels
         API.listenToParcels((parcels) => {
             console.log("🔄 Real-time parcels update received");
+            if (!initialLoad.parcels && parcels.length > lastCounts.parcels) playNotificationSound();
+            lastCounts.parcels = parcels.length;
+            initialLoad.parcels = false;
             
             // 1. Update packages view if active
             const packagesView = document.getElementById('packages');
@@ -1961,6 +2000,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Real-time listener for notices
         API.listenToNotices((notices) => {
             console.log("🔄 Real-time notices update received");
+            if (!initialLoad.notices && notices.length > lastCounts.notices) playNotificationSound();
+            lastCounts.notices = notices.length;
+            initialLoad.notices = false;
             
             // 1. Update dashboard view if active
             const dashboardView = document.getElementById('dashboard');
@@ -1976,6 +2018,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log("Starting occurrences listener...");
         API.listenToOccurrences((occurrences) => {
             console.log("🔄 Real-time occurrences update received (Admin)", occurrences.length);
+            if (!initialLoad.occurrences && occurrences.length > lastCounts.occurrences) playNotificationSound();
+            lastCounts.occurrences = occurrences.length;
+            initialLoad.occurrences = false;
             currentOccurrences = occurrences;
             renderAdminOccurrences(occurrences);
             
@@ -2146,6 +2191,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (cnpjInput) cnpjInput.value = settings.cnpj;
             if (cityInput) cityInput.value = settings.city;
             if (sidebarName) sidebarName.textContent = settings.name;
+
+            const soundToggle = document.getElementById('settings-sound-toggle');
+            if (soundToggle) {
+                soundToggle.checked = localStorage.getItem('condo_sound_enabled') !== 'false';
+                soundToggle.addEventListener('change', (e) => {
+                    localStorage.setItem('condo_sound_enabled', e.target.checked);
+                });
+            }
 
             console.log("Configurações do condomínio carregadas.");
         } catch (error) {
