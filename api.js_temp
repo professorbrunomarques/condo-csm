@@ -6,8 +6,8 @@ console.log("🚀 api.js carregando (Supabase Edition)...");
 const SUPABASE_URL = "https://npkejwvnfzgdwsxaxjki.supabase.co";
 const SUPABASE_KEY = "sb_publishable_S0HgG7flH-dYBw8GSymQNg_ApTCpTwh";
 
-// Initialize Supabase Client (usando supabaseClient para evitar conflito com a global do script)
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Initialize Supabase Client
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // --- Caching para economizar Leituras ---
 let unitsCache = null;
@@ -20,7 +20,7 @@ window.BackendAPI = {
     // --- BLOCOS ---
     getBlocks: async () => {
         if (blocksCache && (Date.now() - lastBlocksFetch < cacheExpiry)) return blocksCache;
-        const { data, error } = await supabaseClient.from('blocks').select('*').order('name');
+        const { data, error } = await supabaseClient.('blocks').select('*').order('name');
         if (error) { console.error(error); return []; }
         blocksCache = data;
         lastBlocksFetch = Date.now();
@@ -28,7 +28,7 @@ window.BackendAPI = {
     },
 
     addBlock: async (name) => {
-        const { data, error } = await supabaseClient.from('blocks').insert([{ name }]).select();
+        const { data, error } = await supabaseClient.('blocks').insert([{ name }]).select();
         if (error) { console.error(error); throw error; }
         const newBlock = data[0];
         blocksCache = null; 
@@ -50,13 +50,13 @@ window.BackendAPI = {
                 });
             }
         }
-        await supabaseClient.from('units').insert(unitsToInsert);
+        await supabaseClient.('units').insert(unitsToInsert);
         unitsCache = null;
         return newBlock;
     },
 
     deleteBlock: async (id) => {
-        await supabaseClient.from('blocks').delete().eq('id', id);
+        await supabaseClient.('blocks').delete().eq('id', id);
         blocksCache = null;
     },
 
@@ -64,7 +64,7 @@ window.BackendAPI = {
     getUnits: async () => {
         if (unitsCache && (Date.now() - lastUnitsFetch < cacheExpiry)) return unitsCache;
         const blocks = await window.BackendAPI.getBlocks();
-        const { data, error } = await supabaseClient.from('units').select('*').order('number');
+        const { data, error } = await supabaseClient.('units').select('*').order('number');
         if (error) { console.error(error); return []; }
         
         const units = data.map(u => {
@@ -79,20 +79,20 @@ window.BackendAPI = {
         return units;
     },
 
-    updateUnit: async (id, updateData) => {
-        await supabaseClient.from('units').update(updateData).eq('id', id);
+    updateUnit: async (id, data) => {
+        await supabaseClient.('units').update(data).eq('id', id);
         unitsCache = null;
     },
 
     getUnitById: async (id) => {
-        const { data } = await supabaseClient.from('units').select('*').eq('id', id).single();
+        const { data } = await supabaseClient.('units').select('*').eq('id', id).single();
         return data || null;
     },
 
     // --- MORADORES ---
     getResidents: async () => {
         const [ { data: snapshot }, units, vehicles ] = await Promise.all([
-            supabaseClient.from('residents').select('*'),
+            supabaseClient.('residents').select('*'),
             window.BackendAPI.getUnits(),
             window.BackendAPI.getVehicles()
         ]);
@@ -104,11 +104,11 @@ window.BackendAPI = {
             return acc;
         }, {});
 
-        return snapshot.map(resData => {
-            const unit = units.find(u => u.id === resData.unitId);
-            const vehiclesCount = vehiclesMap[resData.id] || 0;
+        return snapshot.map(data => {
+            const unit = units.find(u => u.id === data.unitId);
+            const vehiclesCount = vehiclesMap[data.id] || 0;
             return {
-                ...resData,
+                ...data,
                 unitDisplay: unit ? `${unit.blockName} - ${unit.number}` : "S/ Unidade",
                 vehiclesCount,
                 vehicles: String(vehiclesCount)
@@ -117,7 +117,7 @@ window.BackendAPI = {
     },
 
     addResident: async (residentData) => {
-        const { data, error } = await supabaseClient.from('residents').insert([{
+        const { data, error } = await supabaseClient.('residents').insert([{
             ...residentData,
             joinedIn: new Date().toISOString()
         }]).select();
@@ -131,13 +131,13 @@ window.BackendAPI = {
     },
 
     updateResident: async (id, residentData) => {
-        const { data: current } = await supabaseClient.from('residents').select('*').eq('id', id).single();
+        const { data: current } = await supabaseClient.('residents').select('*').eq('id', id).single();
         if (!current) throw new Error("Morador não encontrado.");
 
         const prevUnitId = current.unitId || null;
         const nextUnitId = residentData.unitId || null;
 
-        await supabaseClient.from('residents').update(residentData).eq('id', id);
+        await supabaseClient.('residents').update(residentData).eq('id', id);
 
         if (prevUnitId && prevUnitId !== nextUnitId) {
             await window.BackendAPI.updateUnit(prevUnitId, { status: "Vazia" });
@@ -150,39 +150,39 @@ window.BackendAPI = {
     },
 
     deleteResident: async (id) => {
-        const { data: res } = await supabaseClient.from('residents').select('*').eq('id', id).single();
+        const { data: res } = await supabaseClient.('residents').select('*').eq('id', id).single();
         if (res) {
             if(res.unitId) {
                 await window.BackendAPI.updateUnit(res.unitId, { status: "Vazia" });
             }
-            await supabaseClient.from('vehicles').delete().eq('residentId', id);
-            await supabaseClient.from('residents').delete().eq('id', id);
+            await supabaseClient.('vehicles').delete().eq('residentId', id);
+            await supabaseClient.('residents').delete().eq('id', id);
         }
     },
     
     getResidentById: async (id) => {
-        const { data } = await supabaseClient.from('residents').select('*').eq('id', id).single();
+        const { data } = await supabaseClient.('residents').select('*').eq('id', id).single();
         return data || null;
     },
 
     // --- ENCOMENDAS ---
     getParcels: async () => {
         const [ { data: snapshot }, residents, units ] = await Promise.all([
-            supabaseClient.from('parcels').select('*').order('receivedAt', { ascending: false }),
+            supabaseClient.('parcels').select('*').order('receivedAt', { ascending: false }),
             window.BackendAPI.getResidents(),
             window.BackendAPI.getUnits()
         ]);
 
         if (!snapshot) return [];
 
-        return snapshot.map(pData => {
-            const resident = residents.find(r => r.id === pData.residentId);
-            const unit = units.find(u => u.id === pData.unitId);
+        return snapshot.map(data => {
+            const resident = residents.find(r => r.id === data.residentId);
+            const unit = units.find(u => u.id === data.unitId);
 
             return {
-                ...pData,
-                residentName: resident ? resident.name : (pData.residentName || "Morador não encontrado"),
-                residentPhone: resident ? resident.phone : (pData.residentPhone || ""),
+                ...data,
+                residentName: resident ? resident.name : (data.residentName || "Morador não encontrado"),
+                residentPhone: resident ? resident.phone : (data.residentPhone || ""),
                 unitDisplay: resident ? resident.unitDisplay : (unit ? `${unit.blockName} - ${unit.number}` : "S/ unidade")
             };
         });
@@ -224,14 +224,14 @@ window.BackendAPI = {
             createdAt: now.getTime()
         };
 
-        const { data, error } = await supabaseClient.from('parcels').insert([payload]).select();
+        const { data, error } = await supabaseClient.('parcels').insert([payload]).select();
         if (error) throw error;
         return data[0];
     },
 
     markParcelNotified: async (id) => {
         const now = new Date();
-        await supabaseClient.from('parcels').update({
+        await supabaseClient.('parcels').update({
             notificationStatus: "sent",
             notifiedAt: now.toISOString()
         }).eq('id', id);
@@ -240,7 +240,7 @@ window.BackendAPI = {
 
     markParcelDelivered: async (id, deliveredBy) => {
         const now = new Date();
-        await supabaseClient.from('parcels').update({
+        await supabaseClient.('parcels').update({
             status: "delivered",
             deliveredAt: now.toISOString(),
             deliveredAtLabel: now.toLocaleString("pt-BR"),
@@ -251,14 +251,14 @@ window.BackendAPI = {
 
     // --- MANUTENÇÕES (CHAMADOS) ---
     getMaintenance: async () => {
-        const { data } = await supabaseClient.from('maintenance').select('*').order('date', { ascending: false });
+        const { data } = await supabaseClient.('maintenance').select('*').order('date', { ascending: false });
         return data || [];
     },
 
     addMaintenance: async (title, urgency, desc, location, photoDataUrl = "") => {
         const msDate = new Date();
         const dateStr = msDate.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
-        const { data, error } = await supabaseClient.from('maintenance').insert([{
+        const { data, error } = await supabaseClient.('maintenance').insert([{
             date: msDate.toISOString(),
             displayDate: dateStr,
             title,
@@ -273,12 +273,14 @@ window.BackendAPI = {
     },
 
     updateMaintenanceStatus: async (id, status) => {
-        await supabaseClient.from('maintenance').update({ status }).eq('id', id);
+        await supabaseClient.('maintenance').update({ status }).eq('id', id);
     },
     
     listenToMaintenance: (callback) => {
+        // Fetch inicial
         window.BackendAPI.getMaintenance().then(callback);
-        const channel = supabaseClient.channel('maintenance-changes')
+        // Realtime
+        const channel = supabaseClient.('maintenance-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance' }, async () => {
                 const data = await window.BackendAPI.getMaintenance();
                 callback(data);
@@ -289,7 +291,7 @@ window.BackendAPI = {
 
     listenToParcels: (callback) => {
         window.BackendAPI.getParcels().then(callback);
-        const channel = supabaseClient.channel('parcels-changes')
+        const channel = supabaseClient.('parcels-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'parcels' }, async () => {
                 const data = await window.BackendAPI.getParcels();
                 callback(data);
@@ -300,14 +302,14 @@ window.BackendAPI = {
     
     // --- AVISOS (MURALS) ---
     getNotices: async () => {
-        const { data } = await supabaseClient.from('notices').select('*').order('timestamp', { ascending: false });
+        const { data } = await supabaseClient.('notices').select('*').order('timestamp', { ascending: false });
         return data || [];
     },
     
     addNotice: async (title, content, type) => {
         const dt = new Date();
         const dateStr = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
-        const { data, error } = await supabaseClient.from('notices').insert([{
+        const { data, error } = await supabaseClient.('notices').insert([{
             date: dateStr,
             timestamp: dt.getTime(),
             title,
@@ -319,12 +321,12 @@ window.BackendAPI = {
     },
 
     deleteNotice: async (id) => {
-        await supabaseClient.from('notices').delete().eq('id', id);
+        await supabaseClient.('notices').delete().eq('id', id);
     },
 
     listenToNotices: (callback) => {
         window.BackendAPI.getNotices().then(callback);
-        const channel = supabaseClient.channel('notices-changes')
+        const channel = supabaseClient.('notices-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, async () => {
                 const data = await window.BackendAPI.getNotices();
                 callback(data);
@@ -337,7 +339,7 @@ window.BackendAPI = {
     addOccurrence: async (residentId, residentName, unitDisplay, title, description, mediaDataUrl = '') => {
         const dt = new Date();
         const dateStr = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric', hour: '2-digit', minute: '2-digit' });
-        const { data, error } = await supabaseClient.from('occurrences').insert([{
+        const { data, error } = await supabaseClient.('occurrences').insert([{
             residentId,
             residentName,
             unitDisplay,
@@ -354,13 +356,13 @@ window.BackendAPI = {
     },
 
     getOccurrences: async () => {
-        const { data } = await supabaseClient.from('occurrences').select('*');
+        const { data } = await supabaseClient.('occurrences').select('*');
         if (!data) return [];
         return data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     },
 
     getResidentOccurrences: async (residentId) => {
-        const { data } = await supabaseClient.from('occurrences').select('*').eq('residentId', residentId);
+        const { data } = await supabaseClient.('occurrences').select('*').eq('residentId', residentId);
         if (!data) return [];
         return data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     },
@@ -369,7 +371,7 @@ window.BackendAPI = {
         const dt = new Date();
         const dateStr = dt.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', hour: '2-digit', minute: '2-digit' });
         
-        const { data: doc } = await supabaseClient.from('occurrences').select('*').eq('id', id).single();
+        const { data: doc } = await supabaseClient.('occurrences').select('*').eq('id', id).single();
         if (!doc) return;
 
         const replies = doc.replies || [];
@@ -381,14 +383,14 @@ window.BackendAPI = {
             date: dateStr
         });
 
-        await supabaseClient.from('occurrences').update({ 
+        await supabaseClient.('occurrences').update({ 
             replies,
             status: role === 'admin' ? 'in_review' : doc.status
         }).eq('id', id);
     },
 
     resolveOccurrence: async (id) => {
-        await supabaseClient.from('occurrences').update({ status: 'resolved' }).eq('id', id);
+        await supabaseClient.('occurrences').update({ status: 'resolved' }).eq('id', id);
     },
 
     listenToOccurrences: (callback, residentId = null) => {
@@ -398,7 +400,7 @@ window.BackendAPI = {
         };
         fetchAndCallback();
 
-        const channel = supabaseClient.channel('occurrences-changes')
+        const channel = supabaseClient.('occurrences-changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () => {
                 fetchAndCallback();
             })
@@ -428,12 +430,12 @@ window.BackendAPI = {
 
     // --- COMPATIBILIDADE EXTRA ---
     updateBlock: async (id, name) => {
-        await supabaseClient.from('blocks').update({ name }).eq('id', id);
+        await supabaseClient.('blocks').update({ name }).eq('id', id);
         blocksCache = null;
     },
 
     addUnit: async (blockId, number) => {
-        await supabaseClient.from('units').insert([{
+        await supabaseClient.('units').insert([{
             blockId,
             number: parseInt(number),
             status: "Vazia",
@@ -443,13 +445,13 @@ window.BackendAPI = {
     },
 
     deleteUnit: async (id) => {
-        await supabaseClient.from('units').delete().eq('id', id);
+        await supabaseClient.('units').delete().eq('id', id);
         unitsCache = null;
     },
 
     deleteUnits: async (ids) => {
         for (let id of ids) {
-            await supabaseClient.from('units').delete().eq('id', id);
+            await supabaseClient.('units').delete().eq('id', id);
         }
         unitsCache = null;
         return { success: true, count: ids.length };
@@ -472,7 +474,7 @@ window.BackendAPI = {
                 });
             }
         }
-        await supabaseClient.from('units').insert(unitsToInsert);
+        await supabaseClient.('units').insert(unitsToInsert);
         unitsCache = null;
         return { success: true, count: unitsToInsert.length };
     },
@@ -499,12 +501,12 @@ window.BackendAPI = {
 
     // --- VEÍCULOS ---
     getVehicles: async () => {
-        const { data } = await supabaseClient.from('vehicles').select('*').order('createdAt', { ascending: false });
+        const { data } = await supabaseClient.('vehicles').select('*').order('createdAt', { ascending: false });
         return data || [];
     },
 
     getVehiclesByResident: async (residentId) => {
-        const { data } = await supabaseClient.from('vehicles').select('*').eq('residentId', residentId);
+        const { data } = await supabaseClient.('vehicles').select('*').eq('residentId', residentId);
         if (!data) return [];
         return data.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     },
@@ -522,13 +524,13 @@ window.BackendAPI = {
             tag: vehicleData.tag || "",
             createdAt: new Date().toISOString()
         };
-        const { data, error } = await supabaseClient.from('vehicles').insert([payload]).select();
+        const { data, error } = await supabaseClient.('vehicles').insert([payload]).select();
         if (error) throw error;
         return data[0];
     },
 
     updateVehicle: async (id, vehicleData) => {
-        await supabaseClient.from('vehicles').update({
+        await supabaseClient.('vehicles').update({
             type: vehicleData.type,
             brandModel: vehicleData.brandModel,
             color: vehicleData.color || "",
@@ -539,18 +541,18 @@ window.BackendAPI = {
     },
 
     deleteVehicle: async (id) => {
-        await supabaseClient.from('vehicles').delete().eq('id', id);
+        await supabaseClient.('vehicles').delete().eq('id', id);
         return { success: true };
     },
 
     // --- USUÁRIOS DO SISTEMA (AUTH) ---
     getUsers: async () => {
-        const { data } = await supabaseClient.from('users').select('*').order('name');
+        const { data } = await supabaseClient.('users').select('*').order('name');
         return data || [];
     },
 
     addUser: async (userData) => {
-        const { data, error } = await supabaseClient.from('users').insert([{
+        const { data, error } = await supabaseClient.('users').insert([{
             ...userData,
             createdAt: new Date().toISOString()
         }]).select();
@@ -559,33 +561,33 @@ window.BackendAPI = {
     },
 
     deleteUser: async (id) => {
-        await supabaseClient.from('users').delete().eq('id', id);
+        await supabaseClient.('users').delete().eq('id', id);
     },
 
-    updateUserProfile: async (id, updateData) => {
-        await supabaseClient.from('users').update(updateData).eq('id', id);
+    updateUserProfile: async (id, data) => {
+        await supabaseClient.('users').update(data).eq('id', id);
         const session = JSON.parse(localStorage.getItem("condo_admin_user") || "null");
         if (session && session.id === id) {
-            Object.assign(session, updateData);
+            Object.assign(session, data);
             localStorage.setItem("condo_admin_user", JSON.stringify(session));
         }
         return { success: true };
     },
 
     changeUserPassword: async (id, currentPassword, newPassword) => {
-        const { data: doc } = await supabaseClient.from('users').select('*').eq('id', id).single();
+        const { data: doc } = await supabaseClient.('users').select('*').eq('id', id).single();
         if (!doc) return { success: false, message: "Usuário não encontrado." };
         if (doc.password !== currentPassword) {
             return { success: false, message: "Senha atual incorreta." };
         }
-        await supabaseClient.from('users').update({ password: newPassword }).eq('id', id);
+        await supabaseClient.('users').update({ password: newPassword }).eq('id', id);
         return { success: true };
     },
 
     login: async (username, password) => {
         console.log("Tentativa de login para:", username);
         try {
-            const { data } = await supabaseClient.from('users').select('*').eq('username', username.toLowerCase()).single();
+            const { data } = await supabaseClient.('users').select('*').eq('username', username.toLowerCase()).single();
             if (data) {
                 if (data.password === password) {
                     const user = { ...data };
@@ -618,7 +620,7 @@ window.BackendAPI = {
 
     // --- CONFIGURAÇÕES GLOBAIS ---
     getSettings: async () => {
-        const { data } = await supabaseClient.from('settings').select('*').eq('id', 'condo').single();
+        const { data } = await supabaseClient.('settings').select('*').eq('id', 'condo').single();
         if (data) return data;
         return {
             name: "Residencial Torre Central",
@@ -627,8 +629,8 @@ window.BackendAPI = {
         };
     },
 
-    saveSettings: async (updateData) => {
-        await supabaseClient.from('settings').upsert({ id: 'condo', ...updateData });
+    saveSettings: async (data) => {
+        await supabaseClient.('settings').upsert({ id: 'condo', ...data });
         return { success: true };
     }
 };
@@ -636,13 +638,13 @@ window.BackendAPI = {
 // Script rápido para gerar blocos e admin de demonstração caso o BD esteja zerado.
 setTimeout(async () => {
     try {
-        const { data: bData } = await supabaseClient.from('blocks').select('id').limit(1);
+        const { data: bData } = await supabaseClient.('blocks').select('id').limit(1);
         if(!bData || bData.length === 0) {
             console.log("Banco Supabase Vazio: Auto-Populando Torre Central...");
             await window.BackendAPI.addBlock("Torre Central");
         }
 
-        const { data: uData } = await supabaseClient.from('users').select('id').limit(1);
+        const { data: uData } = await supabaseClient.('users').select('id').limit(1);
         if(!uData || uData.length === 0) {
             console.log("Criando usuário administrador padrão (admin/admin123)...");
             await window.BackendAPI.addUser({
